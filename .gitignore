@@ -1,0 +1,33 @@
+# build outputs
+bin/
+obj/
+out/
+build/
+apk/build/
+test/dummy/b/
+test/dummy/*.apk
+*.apk
+!release/*.apk
+# toolchains / SDKs
+tools/
+dotnet/
+sdk/
+jdk/
+avd/
+# bundled third-party binaries (fetched by win/fetch-payload.sh)
+win/payload/
+platform-tools*/
+platform-tools*.zip
+# signing material - never commit
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+keystore.properties
+.env
+# misc
+*.zip
+*.log
+.vs/
+*.user
