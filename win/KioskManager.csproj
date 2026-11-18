@@ -19,7 +19,7 @@
     <Version>1.0.3</Version>
     <Product>Kiosk Manager</Product>
     <Company>EasyDisplay</Company>
-    <Description>Turns an Android TV device into an Easy Display kiosk</Description>
+    <Description>Turns an Android TV device into an Easy Display Player kiosk</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>

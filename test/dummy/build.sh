@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds a stand-in "Easy Display" (package com.taknik.easydplayer) for emulator tests.
+# Builds a stand-in "Easy Display Player" (package com.taknik.easydplayer) for emulator tests.
 # Uses the same env vars as apk/build.sh (ANDROID_SDK_ROOT, JAVA_HOME, KIOSK_KEYSTORE, KIOSK_KEYSTORE_PASS).
 set -euo pipefail
 cd "$(dirname "$0")"

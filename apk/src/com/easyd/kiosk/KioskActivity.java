@@ -89,7 +89,7 @@ public class KioskActivity extends Activity {
         Intent li = Prefs.launchIntent(this, target);
         if (li == null) {
             showMessage("App not available",
-                    (Prefs.DEFAULT_TARGET.equals(target) ? "Easy Display" : target) + " is not installed or cannot be opened."
+                    (Prefs.DEFAULT_TARGET.equals(target) ? "Easy Display Player" : target) + " is not installed or cannot be opened."
                             + "\n\nInstall it, then press OK.");
             return;
         }
