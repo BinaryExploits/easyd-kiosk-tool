@@ -41,7 +41,10 @@ A prebuilt exe is in [`release/KioskManager.exe`](release/KioskManager.exe) and 
      on the TV.
    - **Google TV / Chromecast: Pair with code (Wireless debugging)** — auto-discovers the TV over mDNS;
      type the 6-digit pairing code, then Connect.
-3. To undo, run the tool again and click **Restore original** on the last step.
+   After Make kiosk (or Restore original) succeeds, the wizard pauses briefly, then shows an **All done!** screen
+   with the TV’s name, IP and Android version, and the hidden way to open Settings. **Set up another TV**
+   disconnects this device and returns to Prepare; **Close** exits.
+3. To undo, run the tool again and click **Restore original** on the last step (USB debugging must be on).
 
 "Advanced: choose a different app" on the EasyD Player step lets you pick any launchable app instead of EasyD Player.
 

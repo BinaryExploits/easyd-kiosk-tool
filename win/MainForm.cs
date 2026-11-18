@@ -15,6 +15,7 @@ public sealed class MainForm : Form
     private readonly TextBox _log = new() { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, Font = new Font("Consolas", 9f), BackColor = Color.FromArgb(250, 250, 250), BorderStyle = BorderStyle.None, WordWrap = true };
     private readonly ToolStripStatusLabel _status = new() { Text = "Ready", Spring = true, TextAlign = ContentAlignment.MiddleLeft };
     private readonly ToolStripProgressBar _progress = new() { Style = ProgressBarStyle.Marquee, Visible = false, Width = 140 };
+    private FlowLayoutPanel _footer;
     private readonly Button _back = Ui.Secondary("◀  Back");
     private readonly Button _next = Ui.Primary("Next  ▶");
     private readonly List<Control> _actionControls = new();
@@ -25,9 +26,12 @@ public sealed class MainForm : Form
     // state
     private string _serial;      // adb serial of the connected TV
     private string _deviceId;    // ro.serialno (stable across reconnects)
+    private string _deviceModel;
+    private string _deviceAndroid;
     private string _target = KioskOps.DefaultTarget;
     private string _targetLabel = KioskOps.DefaultTargetName;
     private bool _targetReady;
+    private const int DonePage = 4;
 
     // page 2: pair
     private readonly ListBox _found = new() { Width = 560, Height = 90, IntegralHeight = false };
@@ -66,6 +70,10 @@ public sealed class MainForm : Form
     private readonly CheckedListBox _homes = new() { Width = 640, Height = 90, CheckOnClick = true, IntegralHeight = false };
     private readonly ListView _steps = new() { View = View.Details, Width = 640, Height = 190, FullRowSelect = true, HeaderStyle = ColumnHeaderStyle.Nonclickable };
     private readonly Label _kioskResult = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 11f), Margin = new Padding(0, 6, 0, 0) };
+    // done screen
+    private readonly Label _doneTitle = new() { AutoSize = true, Font = new Font("Segoe UI Semibold", 28f), ForeColor = Ui.Good, Margin = new Padding(0, 8, 0, 4), Text = "All done!" };
+    private readonly Label _doneSubtitle = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 14f), ForeColor = Color.FromArgb(33, 33, 33), Margin = new Padding(0, 4, 0, 12), Text = "This TV now opens EasyD Player only" };
+    private readonly Label _doneDevice = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI", 11f), ForeColor = Color.FromArgb(33, 33, 33), Margin = new Padding(0, 4, 0, 16) };
 
     private static readonly string[] NavTitles = { "1  Prepare the TV", "2  Connect", "3  EasyD Player", "4  Make kiosk" };
 
@@ -109,7 +117,7 @@ public sealed class MainForm : Form
         {
             int idx = i;
             var l = new Label { Text = NavTitles[i], Width = 210, Height = 42, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(18, 0, 0, 0), Margin = new Padding(0), Cursor = Cursors.Hand, Font = new Font("Segoe UI", 10.5f) };
-            l.Click += (_, _) => { if (!_busy && CanEnter(idx)) ShowPage(idx); };
+            l.Click += (_, _) => { if (!_busy && _page != DonePage && CanEnter(idx)) ShowPage(idx); };
             _navItems.Add(l);
             nav.Controls.Add(l);
         }
@@ -123,6 +131,7 @@ public sealed class MainForm : Form
         status.Items.Add(_progress);
 
         var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 54, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(16, 4, 16, 4), BackColor = Color.White };
+        _footer = footer;
         footer.Controls.Add(_next);
         footer.Controls.Add(_back);
         _back.Click += (_, _) => { if (_page > 0) ShowPage(_page - 1); };
@@ -146,6 +155,7 @@ public sealed class MainForm : Form
         _pages.Add(PageConnect());
         _pages.Add(PageApp());
         _pages.Add(PageKiosk());
+        _pages.Add(PageDone());
         foreach (var p in _pages) _content.Controls.Add(p);
     }
 
@@ -345,6 +355,29 @@ public sealed class MainForm : Form
         return p;
     }
 
+    private Control PageDone()
+    {
+        var p = Ui.Page();
+        var check = new Label
+        {
+            Text = "✔", AutoSize = true, Font = new Font("Segoe UI Semibold", 72f),
+            ForeColor = Ui.Good, Margin = new Padding(0, 12, 0, 0)
+        };
+        p.Controls.Add(check);
+        p.Controls.Add(_doneTitle);
+        p.Controls.Add(_doneSubtitle);
+        p.Controls.Add(_doneDevice);
+        p.Controls.Add(Ui.Text("To open Android Settings on the TV, hold OK for 3 seconds (or press Up Up Down Down Left Right Left Right).", 640, Ui.Muted));
+        p.Controls.Add(Ui.Text("Unplug USB debugging if you like; Restore original needs it on.", 640, Ui.Muted));
+        var again = Ui.Primary("Set up another TV");
+        var close = Ui.Secondary("Close");
+        again.Click += async (_, _) => await ResetForAnotherTvAsync();
+        close.Click += (_, _) => Close();
+        _actionControls.Add(again); _actionControls.Add(close);
+        p.Controls.Add(Ui.Row(again, close));
+        return p;
+    }
+
     // ───────────────────────────── navigation ─────────────────────────────
     private bool CanEnter(int idx)
     {
@@ -361,19 +394,27 @@ public sealed class MainForm : Form
         _page = idx;
         for (int i = 0; i < _pages.Count; i++) _pages[i].Visible = i == idx;
         RefreshNav();
-        _back.Visible = idx > 0;
-        _next.Visible = idx < _pages.Count - 1;
-        StartPageWork(idx);
+        bool onDone = idx == DonePage;
+        _back.Visible = idx > 0 && !onDone;
+        _next.Visible = idx < 3; // hide on Make kiosk and the done screen
+        if (_footer != null) _footer.Visible = !onDone;
+        if (!onDone) StartPageWork(idx);
     }
 
     private void RefreshNav()
     {
+        bool done = _page == DonePage;
         for (int i = 0; i < _navItems.Count; i++)
         {
-            bool cur = i == _page;
+            bool cur = !done && i == _page;
+            _navItems[i].Text = done
+                ? "✔  " + System.Text.RegularExpressions.Regex.Replace(NavTitles[i], @"^\d+\s+", "")
+                : NavTitles[i];
             _navItems[i].BackColor = cur ? Ui.BrandLight : Ui.Nav;
-            _navItems[i].ForeColor = cur ? Ui.Brand : (CanEnterQuiet(i) ? Color.FromArgb(40, 40, 40) : Color.FromArgb(160, 160, 160));
-            _navItems[i].Font = new Font(cur ? "Segoe UI Semibold" : "Segoe UI", 10.5f);
+            _navItems[i].ForeColor = done ? Ui.Good
+                : cur ? Ui.Brand
+                : (CanEnterQuiet(i) ? Color.FromArgb(40, 40, 40) : Color.FromArgb(160, 160, 160));
+            _navItems[i].Font = new Font((cur || done) ? "Segoe UI Semibold" : "Segoe UI", 10.5f);
         }
     }
 
@@ -657,6 +698,8 @@ public sealed class MainForm : Form
                 return;
             }
             _serial = serial;
+            _deviceModel = model;
+            _deviceAndroid = rel;
             _appList.Clear();
             _lblDevice.Text = $"📺  {model}  ·  Android {rel}  ·  {serial}";
             Log($"Connected: {model}, Android {rel} (SDK {sdk}), serial {serial}");
@@ -912,9 +955,16 @@ public sealed class MainForm : Form
                 : "⚠ Mostly done — see the steps above and the log. The TV may ask which home app to use: choose “Kiosk Manager” → Always.";
             Status("Kiosk ready.");
             Log("=== Kiosk ready ===");
+            if (failed == 0 && isDefault)
+            {
+                SetBusy(false);
+                try { await Task.Delay(1200, _pageCts.Token); }
+                catch (TaskCanceledException) { return; }
+                ShowDone(restored: false);
+            }
         }
         catch (Exception ex) { Fail(ex.Message); }
-        finally { SetBusy(false); }
+        finally { if (_busy) SetBusy(false); }
     }
 
     private async Task RestoreAsync()
@@ -958,10 +1008,76 @@ public sealed class MainForm : Form
             _kioskResult.ForeColor = Ui.Good;
             _kioskResult.Text = "✔ Restored. The TV is back to its original home screen.";
             Status("Restored.");
-            await PrepareKioskPageAsyncSilent();
+            Log("=== Restored ===");
+            SetBusy(false);
+            try { await Task.Delay(1200, _pageCts.Token); }
+            catch (TaskCanceledException) { return; }
+            ShowDone(restored: true);
         }
         catch (Exception ex) { Fail(ex.Message); }
+        finally { if (_busy) SetBusy(false); }
+    }
+
+    private void ShowDone(bool restored)
+    {
+        _doneTitle.Text = "All done!";
+        _doneSubtitle.Text = restored
+            ? "Restored: the original home screen is back"
+            : $"This TV now opens {_targetLabel} only";
+        var name = string.IsNullOrWhiteSpace(_deviceModel) ? "TV" : _deviceModel;
+        var parts = new List<string> { name };
+        if (!string.IsNullOrWhiteSpace(_serial)) parts.Add(_serial);
+        if (!string.IsNullOrWhiteSpace(_deviceAndroid)) parts.Add("Android " + _deviceAndroid);
+        _doneDevice.Text = string.Join("  ·  ", parts);
+        ShowPage(DonePage);
+        Status(restored ? "Restored." : "Kiosk ready.");
+    }
+
+    private async Task ResetForAnotherTvAsync()
+    {
+        _pageCts.Cancel();
+        _pageCts = new CancellationTokenSource();
+        SetBusy(true, "Disconnecting...");
+        try
+        {
+            if (!string.IsNullOrEmpty(_serial) && !string.IsNullOrEmpty(_adb.AdbPath))
+            {
+                try { await _adb.RunAsync(15000, false, "disconnect", _serial); }
+                catch (Exception ex) { Log("disconnect: " + ex.Message); }
+            }
+        }
         finally { SetBusy(false); }
+
+        _serial = null;
+        _deviceId = null;
+        _deviceModel = null;
+        _deviceAndroid = null;
+        _target = KioskOps.DefaultTarget;
+        _targetLabel = KioskOps.DefaultTargetName;
+        _targetReady = false;
+        _connectModePicked = false;
+        _lblDevice.Text = "No TV connected";
+        _found.Items.Clear();
+        _pairAddr.Text = "";
+        _pairCode.Text = "";
+        _pairResult.Text = "";
+        _ipAddr.Text = "";
+        _connAddr.Text = "";
+        _connResult.Text = "";
+        _devices.Items.Clear();
+        _appStatus.Text = "";
+        _appHint.Text = "";
+        _advanced.Visible = false;
+        _appList.Clear();
+        _apps.Items.Clear();
+        _homes.Items.Clear();
+        _steps.Items.Clear();
+        _kioskResult.Text = "";
+        _targetInfo.Text = "";
+        ApplyConnectModeFromPrepare();
+        Log("--- Set up another TV ---");
+        ShowPage(0);
+        Status("Ready. Follow the steps on the left.");
     }
 
     private async Task PrepareKioskPageAsyncSilent()
