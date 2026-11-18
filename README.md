@@ -59,7 +59,7 @@ The tool checks whether Easy Display Player is installed. If it is missing, the 
 
 ### 4. Make kiosk
 
-Click **Make kiosk**. The TV will then open Easy Display Player at start-up and whenever Home is pressed. When it finishes, an **All done!** screen shows the TV’s name, IP and Android version, and reminds you how to reach Settings.
+Click **Make kiosk**. The TV will then open Easy Display Player at start-up and whenever Home is pressed. If the TV asks which home app to use, choose **Easy Display Kiosk Manager** and **Always**. When it finishes, an **All done!** screen shows the TV’s name, IP and Android version, and reminds you how to reach Settings.
 
 **Set up another TV** disconnects this device and returns to Prepare. **Close** exits.
 

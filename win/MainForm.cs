@@ -943,7 +943,7 @@ public sealed class MainForm : Form
             var resolved = await _ops.ResolveHomeAsync(s);
             bool isDefault = resolved.StartsWith(KioskOps.KioskPkg);
             SetStep(5, isDefault ? StepState.Done : StepState.Failed, isDefault ? null : "TV may ask which home to use");
-            if (!isDefault) Log($"Home currently resolves to: {resolved}. If the TV asks, choose “{"Kiosk Manager"}” and “Always”.");
+            if (!isDefault) Log($"Home currently resolves to: {resolved}. If the TV asks, choose “{"Easy Display Kiosk Manager"}” and “Always”.");
 
             SetStep(6, StepState.Running);
             await _adb.ShellAsync(s, "input keyevent KEYCODE_HOME");
@@ -952,7 +952,7 @@ public sealed class MainForm : Form
             _kioskResult.ForeColor = failed == 0 && isDefault ? Ui.Good : Ui.Warn;
             _kioskResult.Text = failed == 0 && isDefault
                 ? $"✔ Done! The TV now opens {_targetLabel} on start-up and when Home is pressed."
-                : "⚠ Mostly done — see the steps above and the log. The TV may ask which home app to use: choose “Kiosk Manager” → Always.";
+                : "⚠ Mostly done — see the steps above and the log. The TV may ask which home app to use: choose “Easy Display Kiosk Manager” → Always.";
             Status("Kiosk ready.");
             Log("=== Kiosk ready ===");
             if (failed == 0 && isDefault)
