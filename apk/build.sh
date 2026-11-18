@@ -31,7 +31,7 @@ python3 -c "import zipfile;z=zipfile.ZipFile('build/withdex.apk','a',zipfile.ZIP
 if [ ! -f "$KIOSK_KEYSTORE" ]; then
   if [ "${KIOSK_GENERATE_KEY:-0}" = "1" ]; then
     keytool -genkeypair -keystore "$KIOSK_KEYSTORE" -storepass:env KIOSK_KEYSTORE_PASS -keypass:env KIOSK_KEYSTORE_PASS \
-      -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=EasyD Kiosk, O=EasyD" >/dev/null
+      -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Kiosk Manager, O=EasyDisplay" >/dev/null
   else
     echo "Keystore $KIOSK_KEYSTORE not found (set KIOSK_GENERATE_KEY=1 to create one)" >&2; exit 1
   fi

@@ -6,7 +6,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Nullable>disable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>EasyDKiosk</AssemblyName>
+    <AssemblyName>KioskManager</AssemblyName>
     <RootNamespace>EasyDKiosk</RootNamespace>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -16,9 +16,9 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <DebugType>none</DebugType>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <Version>1.0.0</Version>
-    <Product>EasyD Kiosk Setup</Product>
-    <Company>EasyD</Company>
+    <Version>1.0.1</Version>
+    <Product>EasyDisplay Kiosk Manager</Product>
+    <Company>EasyDisplay</Company>
     <Description>Turns an Android TV device into an EasyD Player kiosk</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>

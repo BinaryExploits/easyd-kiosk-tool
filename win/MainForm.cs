@@ -56,7 +56,7 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "EasyD Kiosk Setup";
+        Text = "EasyDisplay Kiosk Manager";
         Font = new Font("Segoe UI", 10f);
         AutoScaleMode = AutoScaleMode.Dpi;
         StartPosition = FormStartPosition.CenterScreen;
@@ -79,7 +79,7 @@ public sealed class MainForm : Form
     {
         var header = new Panel { Dock = DockStyle.Top, Height = 74, BackColor = Ui.Brand, Padding = new Padding(20, 10, 20, 10) };
         var titles = new FlowLayoutPanel { Dock = DockStyle.Left, FlowDirection = FlowDirection.TopDown, AutoSize = true, BackColor = Ui.Brand, WrapContents = false };
-        titles.Controls.Add(new Label { Text = "EasyD Kiosk Setup", AutoSize = true, ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 17f), Margin = new Padding(0) });
+        titles.Controls.Add(new Label { Text = "EasyDisplay Kiosk Manager", AutoSize = true, ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 17f), Margin = new Padding(0) });
         titles.Controls.Add(new Label { Text = "Make an Android TV / Google TV device show only EasyD Player", AutoSize = true, ForeColor = Color.FromArgb(200, 215, 240), Margin = new Padding(2, 0, 0, 0) });
         header.Controls.Add(titles);
         var devHost = new Panel { Dock = DockStyle.Right, Width = 380, BackColor = Ui.Brand };
@@ -143,14 +143,14 @@ public sealed class MainForm : Form
         var tabs = new TabControl { Width = 660, Height = 300, Margin = new Padding(0, 10, 0, 6) };
         tabs.TabPages.Add(InstrTab("Android TV  (Xiaomi Mi TV Stick 4K, most TV boxes)",
             "1.  Open Settings  ›  Device Preferences  ›  About.\r\n" +
-            "2.  Scroll to “Build” and press OK on it 7 times, until it says “You are now a developer”.\r\n" +
+            "2.  Scroll to “Android TV OS build” (on some devices it’s just called “Build”) and press OK on it 7 times, until it says “You are now a developer”.\r\n" +
             "3.  Go back to Settings  ›  Device Preferences  ›  Developer options.\r\n" +
             "4.  Turn on “USB debugging”, then open “Wireless debugging” and turn it on (choose “Always allow on this network” if asked).\r\n" +
             "5.  Inside Wireless debugging choose “Pair device with pairing code”. Leave that screen open and click Next here.\r\n\r\n" +
             "Needs Android TV 11 or newer. The older Mi TV Stick (Android 9) has no Wireless debugging."));
         tabs.TabPages.Add(InstrTab("Google TV  (Chromecast with Google TV, Google TV Streamer)",
             "1.  Open Settings  ›  System  ›  About.\r\n" +
-            "2.  Scroll to “Android TV OS build” and press OK on it 7 times (enter your PIN if asked) until it says “You are now a developer”.\r\n" +
+            "2.  Scroll to “Android TV OS build” (on some devices it’s just called “Build”) and press OK on it 7 times (enter your PIN if asked) until it says “You are now a developer”.\r\n" +
             "3.  Go back to Settings  ›  System  ›  Developer options.\r\n" +
             "4.  Turn on “USB debugging”, then open “Wireless debugging” and turn it on.\r\n" +
             "5.  Inside Wireless debugging choose “Pair device with pairing code”. Leave that screen open and click Next here."));
@@ -770,7 +770,7 @@ public sealed class MainForm : Form
             var resolved = await _ops.ResolveHomeAsync(s);
             bool isDefault = resolved.StartsWith(KioskOps.KioskPkg);
             SetStep(5, isDefault ? StepState.Done : StepState.Failed, isDefault ? null : "TV may ask which home to use");
-            if (!isDefault) Log($"Home currently resolves to: {resolved}. If the TV asks, choose “{"EasyD Kiosk"}” and “Always”.");
+            if (!isDefault) Log($"Home currently resolves to: {resolved}. If the TV asks, choose “{"Kiosk Manager"}” and “Always”.");
 
             SetStep(6, StepState.Running);
             await _adb.ShellAsync(s, "input keyevent KEYCODE_HOME");
@@ -779,7 +779,7 @@ public sealed class MainForm : Form
             _kioskResult.ForeColor = failed == 0 && isDefault ? Ui.Good : Ui.Warn;
             _kioskResult.Text = failed == 0 && isDefault
                 ? $"✔ Done! The TV now opens {_targetLabel} on start-up and when Home is pressed."
-                : "⚠ Mostly done — see the steps above and the log. The TV may ask which home app to use: choose “EasyD Kiosk” → Always.";
+                : "⚠ Mostly done — see the steps above and the log. The TV may ask which home app to use: choose “Kiosk Manager” → Always.";
             Status("Kiosk ready.");
             Log("=== Kiosk ready ===");
         }

@@ -26,7 +26,7 @@ import java.util.ArrayDeque;
  *  - Hold OK / Enter for ~3 seconds while this screen is visible (shown briefly after Home is pressed,
  *    or permanently when the target app is missing) -> opens Android Settings.
  *  - Key sequence Up Up Down Down Left Right Left Right -> opens Android Settings.
- *  - Over adb: the Windows tool's "Restore original" (or `adb uninstall com.easyd.kiosk` plus `pm enable`).
+ *  - Over adb: Kiosk Manager's "Restore original" (or `adb uninstall com.easyd.kiosk` plus `pm enable`).
  */
 public class KioskActivity extends Activity {
     private static final long SPLASH_MS = 2000;
@@ -160,7 +160,7 @@ public class KioskActivity extends Activity {
             } catch (SecurityException ignored) {
             }
         }
-        showMessage("Settings not found", "Use the Windows tool's Restore button over adb.");
+        showMessage("Settings not found", "Use Kiosk Manager's Restore button over adb.");
     }
 
     private static boolean isOk(int k) {

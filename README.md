@@ -1,18 +1,22 @@
-# EasyD Kiosk Tool
+# EasyDisplay Kiosk Manager
 
-A Windows tool that turns an **Android TV 11+** device (Xiaomi Mi TV Stick 4K, Chromecast with Google TV,
-Google TV Streamer, most Android TV boxes) into a kiosk that only shows **EasyD Player**
-(`com.taknik.easydplayer`). After setup the TV opens EasyD Player at start-up and whenever Home is pressed.
-Other apps stay installed; nothing is deleted, and everything can be undone.
+**EasyDisplay Kiosk Manager** (short name: **Kiosk Manager**) is a Windows tool that turns an **Android TV 11+**
+device (Xiaomi Mi TV Stick 4K, Chromecast with Google TV, Google TV Streamer, most Android TV boxes)
+into a kiosk that only shows **EasyD Player** (`com.taknik.easydplayer`). After setup the TV opens
+EasyD Player at start-up and whenever Home is pressed. Other apps stay installed; nothing is deleted,
+and everything can be undone.
+
+This repository is [`BinaryExploits/kiosk-manager`](https://github.com/BinaryExploits/kiosk-manager)
+(previously `easyd-kiosk-tool`).
 
 It has two parts:
 
 | Part | What it is |
 |------|------------|
-| `win/` | `EasyDKiosk.exe`: a .NET 8 WinForms wizard (self-contained single file, win-x64) that bundles adb and the kiosk APK |
-| `apk/` | `com.easyd.kiosk`: a tiny home-screen app that opens the target app and nothing else |
+| `win/` | `KioskManager.exe`: a .NET 8 WinForms wizard (self-contained single file, win-x64) that bundles adb and the kiosk APK |
+| `apk/` | `com.easyd.kiosk`: a tiny home-screen app, labelled **Kiosk Manager**, that opens the target app and nothing else |
 
-A prebuilt exe is in [`release/EasyDKiosk.exe`](release/EasyDKiosk.exe) and on the Releases page.
+A prebuilt exe is in [`release/KioskManager.exe`](release/KioskManager.exe) and on the Releases page.
 
 > **Status:** tested on an Android TV 11 emulator with a stand-in app. **Untested on real hardware.**
 > The exe is not code-signed, so Windows SmartScreen will warn ("More info" → "Run anyway").
@@ -20,12 +24,12 @@ A prebuilt exe is in [`release/EasyDKiosk.exe`](release/EasyDKiosk.exe) and on t
 ## Using it
 
 1. On the TV turn on Developer options and Wireless debugging:
-   - **Android TV (Xiaomi):** Settings › Device Preferences › About › press **Build** 7 times, then
-     Device Preferences › Developer options › **Wireless debugging**.
-   - **Google TV (Chromecast):** Settings › System › About › press **Android TV OS build** 7 times, then
-     System › Developer options › **Wireless debugging**.
+   - **Android TV (Xiaomi):** Settings › Device Preferences › About › press **Android TV OS build** 7 times
+     (on some devices it's just called **Build**), then Device Preferences › Developer options › **Wireless debugging**.
+   - **Google TV (Chromecast):** Settings › System › About › press **Android TV OS build** 7 times
+     (on some devices it's just called **Build**), then System › Developer options › **Wireless debugging**.
    - In Wireless debugging choose **Pair device with pairing code** and keep that screen open.
-2. On a Windows PC on the same Wi-Fi, run `EasyDKiosk.exe` and follow the 5 steps:
+2. On a Windows PC on the same Wi-Fi, run `KioskManager.exe` and follow the 5 steps:
    **Prepare → Pair** (auto-discovers the TV over mDNS; type the 6-digit code) **→ Connect → EasyD Player**
    (if it's missing, its Play Store page opens on the TV; press Install and the tool continues by itself)
    **→ Make kiosk**.
@@ -91,7 +95,7 @@ export KIOSK_KEYSTORE_PASS='...'          # never commit this
 
 ./apk/build.sh                    # -> apk/build/EasyDKiosk.apk
 ./win/fetch-payload.sh            # copies the APK + downloads Google platform-tools into win/payload/
-cd win && dotnet publish -c Release -o out   # -> win/out/EasyDKiosk.exe (~80 MB, self-contained)
+cd win && dotnet publish -c Release -o out   # -> win/out/KioskManager.exe (~80 MB, self-contained)
 ```
 
 `win/payload/` is git-ignored: the APK and Google's platform-tools are embedded into the exe at publish time.

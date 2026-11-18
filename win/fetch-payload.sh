@@ -1,5 +1,5 @@
 #!/bin/bash
-# Puts the files that get embedded into EasyDKiosk.exe into win/payload/ (not committed):
+# Puts the files that get embedded into KioskManager.exe into win/payload/ (not committed):
 #   payload/EasyDKiosk.apk                      from apk/build.sh
 #   payload/platform-tools-latest-windows.zip   Google's adb for Windows
 set -euo pipefail
