@@ -24,7 +24,7 @@ public sealed class HomeCandidate
 public sealed class KioskOps
 {
     public const string DefaultTarget = "com.taknik.easydplayer";
-    public const string DefaultTargetName = "EasyD Player";
+    public const string DefaultTargetName = "Easy Display";
     public const string KioskPkg = "com.easyd.kiosk";
     public const string HomeComponent = "com.easyd.kiosk/.HomeAlias";
     public const string ReceiverComponent = "com.easyd.kiosk/.ConfigReceiver";

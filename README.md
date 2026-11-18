@@ -1,6 +1,6 @@
 # Kiosk Manager
 
-**Kiosk Manager** is a free Windows tool that turns an Android TV or Google TV device into a kiosk that only shows [EasyD Player](https://play.google.com/store/apps/details?id=com.taknik.easydplayer). After setup, the TV opens EasyD Player at start-up and whenever Home is pressed. Other apps stay installed — nothing is deleted — and you can undo everything later.
+**Kiosk Manager** is a free Windows tool that turns an Android TV or Google TV device into a kiosk that only shows [Easy Display](https://play.google.com/store/apps/details?id=com.taknik.easydplayer). After setup, the TV opens Easy Display at start-up and whenever Home is pressed. Other apps stay installed — nothing is deleted — and you can undo everything later.
 
 ## Download
 
@@ -19,7 +19,7 @@ Windows SmartScreen will likely warn that the app is unrecognized, because the e
 
 ## How to use it
 
-The wizard has four steps: **Prepare → Connect → EasyD Player → Make kiosk**.
+The wizard has four steps: **Prepare → Connect → Easy Display → Make kiosk**.
 
 ### 1. Prepare the TV
 
@@ -53,19 +53,19 @@ On the PC, run `KioskManager.exe`. On the Prepare step, pick the menu type that 
 1. The tool tries to find the TV automatically. If it does not, type the IP address:port shown under the pairing code.
 2. Enter the 6-digit pairing code and click **Pair**, then **Connect**. The connect port at the top of the Wireless debugging screen is different from the pairing port.
 
-### 3. EasyD Player
+### 3. Easy Display
 
-The tool checks whether EasyD Player is installed. If it is missing, the Play Store page opens on the TV — press **Install** with the remote, and the tool continues by itself. You can also choose a different app under **Advanced**.
+The tool checks whether Easy Display is installed. If it is missing, the Play Store page opens on the TV — press **Install** with the remote, and the tool continues by itself. You can also choose a different app under **Advanced**.
 
 ### 4. Make kiosk
 
-Click **Make kiosk**. The TV will then open EasyD Player at start-up and whenever Home is pressed. When it finishes, an **All done!** screen shows the TV’s name, IP and Android version, and reminds you how to reach Settings.
+Click **Make kiosk**. The TV will then open Easy Display at start-up and whenever Home is pressed. When it finishes, an **All done!** screen shows the TV’s name, IP and Android version, and reminds you how to reach Settings.
 
 **Set up another TV** disconnects this device and returns to Prepare. **Close** exits.
 
 ## Hidden way to reach Settings
 
-The kiosk can look locked to EasyD Player. To open Android Settings on the TV (no PC needed), press Home, then while the dark EasyD Player screen is showing (about 2 seconds), or whenever the “App not available” screen is shown:
+The kiosk can look locked to Easy Display. To open Android Settings on the TV (no PC needed), press Home, then while the dark Easy Display screen is showing (about 2 seconds), or whenever the “App not available” screen is shown:
 
 - hold **OK** for 3 seconds, or
 - press **Up Up Down Down Left Right Left Right**
@@ -102,4 +102,4 @@ cd win && dotnet publish -c Release -o out   # -> win/out/KioskManager.exe (~80 
 
 `win/payload/` is git-ignored. If platform-tools is not embedded, the exe downloads it from Google on first run.
 
-Confirmed on a Xiaomi Mi TV Stick 4K (Android 11) with EasyD Player, including Connect by IP and Make kiosk. The Google TV pairing path was also used on a Chromecast with Google TV. The Windows UI was built on Linux.
+Confirmed on a Xiaomi Mi TV Stick 4K (Android 11) with Easy Display, including Connect by IP and Make kiosk. The Google TV pairing path was also used on a Chromecast with Google TV. The Windows UI was built on Linux.

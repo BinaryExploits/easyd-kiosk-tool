@@ -72,10 +72,10 @@ public sealed class MainForm : Form
     private readonly Label _kioskResult = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 11f), Margin = new Padding(0, 6, 0, 0) };
     // done screen
     private readonly Label _doneTitle = new() { AutoSize = true, Font = new Font("Segoe UI Semibold", 28f), ForeColor = Ui.Good, Margin = new Padding(0, 8, 0, 4), Text = "All done!" };
-    private readonly Label _doneSubtitle = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 14f), ForeColor = Color.FromArgb(33, 33, 33), Margin = new Padding(0, 4, 0, 12), Text = "This TV now opens EasyD Player only" };
+    private readonly Label _doneSubtitle = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 14f), ForeColor = Color.FromArgb(33, 33, 33), Margin = new Padding(0, 4, 0, 12), Text = "This TV now opens Easy Display only" };
     private readonly Label _doneDevice = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI", 11f), ForeColor = Color.FromArgb(33, 33, 33), Margin = new Padding(0, 4, 0, 16) };
 
-    private static readonly string[] NavTitles = { "1  Prepare the TV", "2  Connect", "3  EasyD Player", "4  Make kiosk" };
+    private static readonly string[] NavTitles = { "1  Prepare the TV", "2  Connect", "3  Easy Display", "4  Make kiosk" };
 
     public MainForm()
     {
@@ -103,7 +103,7 @@ public sealed class MainForm : Form
         var header = new Panel { Dock = DockStyle.Top, Height = 74, BackColor = Ui.Brand, Padding = new Padding(20, 10, 20, 10) };
         var titles = new FlowLayoutPanel { Dock = DockStyle.Left, FlowDirection = FlowDirection.TopDown, AutoSize = true, BackColor = Ui.Brand, WrapContents = false };
         titles.Controls.Add(new Label { Text = "Kiosk Manager", AutoSize = true, ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 17f), Margin = new Padding(0) });
-        titles.Controls.Add(new Label { Text = "Make an Android TV / Google TV device show only EasyD Player", AutoSize = true, ForeColor = Color.FromArgb(200, 215, 240), Margin = new Padding(2, 0, 0, 0) });
+        titles.Controls.Add(new Label { Text = "Make an Android TV / Google TV device show only Easy Display", AutoSize = true, ForeColor = Color.FromArgb(200, 215, 240), Margin = new Padding(2, 0, 0, 0) });
         header.Controls.Add(titles);
         var devHost = new Panel { Dock = DockStyle.Right, Width = 380, BackColor = Ui.Brand };
         _lblDevice.Anchor = AnchorStyles.Right | AnchorStyles.Top;
@@ -279,7 +279,7 @@ public sealed class MainForm : Form
     private Control PageApp()
     {
         var p = Ui.Page();
-        p.Controls.Add(Ui.Heading("EasyD Player"));
+        p.Controls.Add(Ui.Heading("Easy Display"));
         p.Controls.Add(Ui.Text($"The kiosk will open {KioskOps.DefaultTargetName} ({KioskOps.DefaultTarget}) every time the TV starts or Home is pressed.", 640, Ui.Muted));
         p.Controls.Add(_appStatus);
         p.Controls.Add(_appHint);
@@ -302,7 +302,7 @@ public sealed class MainForm : Form
         _apps.Columns.Add("Package", 360);
         _apps.SelectedIndexChanged += (_, _) => { };
         var useApp = Ui.Primary("Use selected app");
-        var useDefault = Ui.Secondary("Back to EasyD Player");
+        var useDefault = Ui.Secondary("Back to Easy Display");
         var reload = Ui.Secondary("Reload list");
         useApp.Click += async (_, _) =>
         {
@@ -781,15 +781,15 @@ public sealed class MainForm : Form
         _appStatus.ForeColor = Ui.Warn;
         if (r.All.Contains("Error") || r.All.Contains("unable to resolve"))
         {
-            _appStatus.Text = "Install EasyD Player on the TV";
-            _appHint.Text = "The Play Store could not be opened on the TV. Install EasyD Player on the TV another way — this page continues automatically once it is installed.";
+            _appStatus.Text = $"Install {KioskOps.DefaultTargetName} on the TV";
+            _appHint.Text = $"The Play Store could not be opened on the TV. Install {KioskOps.DefaultTargetName} on the TV another way — this page continues automatically once it is installed.";
         }
         else
         {
             _appStatus.Text = "Press Install on the TV with your remote";
-            _appHint.Text = "The EasyD Player page is open in the Play Store on the TV. This page continues automatically once it is installed.";
+            _appHint.Text = $"The {KioskOps.DefaultTargetName} page is open in the Play Store on the TV. This page continues automatically once it is installed.";
         }
-        Status("Waiting for EasyD Player to be installed on the TV...");
+        Status($"Waiting for {KioskOps.DefaultTargetName} to be installed on the TV...");
     }
 
     private Task<AdbResult> _ops_StartStore()
