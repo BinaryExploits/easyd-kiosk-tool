@@ -32,6 +32,7 @@ public sealed partial class MainForm : Form
     private string _targetLabel = KioskOps.DefaultTargetName;
     private bool _targetReady;
     private const int DonePage = 4;
+    // ResetPage is declared in MainForm.Reset.cs
 
     // page 2: pair
     private readonly ListBox _found = new() { Width = 560, Height = 90, IntegralHeight = false };
@@ -92,7 +93,7 @@ public sealed partial class MainForm : Form
     private readonly Label _doneSubtitle = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 14f), ForeColor = Color.FromArgb(33, 33, 33), Margin = new Padding(0, 4, 0, 12), Text = "This TV now opens Easy Display Player only" };
     private readonly Label _doneDevice = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI", 11f), ForeColor = Color.FromArgb(33, 33, 33), Margin = new Padding(0, 4, 0, 16) };
 
-    private static readonly string[] NavTitles = { "1  Prepare the TV", "2  Connect", "3  Easy Display Player", "4  Make kiosk" };
+    private static readonly string[] NavTitles = { "1  Prepare the TV", "2  Connect", "3  Easy Display Player", "4  Make Easy Display Kiosk" };
 
     public MainForm()
     {
@@ -111,7 +112,11 @@ public sealed partial class MainForm : Form
         BuildPages();
         ShowPage(0);
         Shown += async (_, _) => await InitAdbAsync();
-        FormClosing += (_, _) => _pageCts.Cancel();
+        FormClosing += (_, _) =>
+        {
+            _pageCts.Cancel();
+            try { UninstallAllTempIdentifyAsync().Wait(15000); } catch { }
+        };
     }
 
     // ───────────────────────────── layout ─────────────────────────────
@@ -173,7 +178,8 @@ public sealed partial class MainForm : Form
         _pages.Add(PageApp());
         _pages.Add(PageKiosk());
         _pages.Add(PageDone());
-        foreach (var p in _pages) _content.Controls.Add(p);
+        _pages.Add(PageReset());
+        foreach (var pg in _pages) _content.Controls.Add(pg);
     }
 
     private Control PagePrepare()
@@ -202,6 +208,7 @@ public sealed partial class MainForm : Form
         };
         p.Controls.Add(_prepTabs);
         p.Controls.Add(Ui.Text("Tip: if Windows Firewall asks about “adb”, click Allow (Private networks) so the TV can be found automatically.", 640, Ui.Muted));
+        p.Controls.Add(ResetOptionsLink());
         return p;
     }
 
@@ -281,6 +288,7 @@ public sealed partial class MainForm : Form
         use.Click += async (_, _) => { if (_devices.SelectedItem is string s) await UseDeviceAsync(s); };
         _actionControls.Add(refresh); _actionControls.Add(use);
         p.Controls.Add(Ui.Row(_devices, use, refresh));
+        p.Controls.Add(ResetOptionsLink());
         ApplyConnectModeFromPrepare();
         return p;
     }
@@ -359,11 +367,11 @@ public sealed partial class MainForm : Form
     private Control PageKiosk()
     {
         var p = Ui.Page();
-        p.Controls.Add(Ui.Heading("Make the kiosk"));
+        p.Controls.Add(Ui.Heading("Make Easy Display Kiosk"));
         p.Controls.Add(_targetInfo);
         p.Controls.Add(Ui.Text("These home screens will be turned off (not deleted). All other apps stay installed. Untick anything you want to keep:", 640, Ui.Muted));
         p.Controls.Add(_homes);
-        var make = Ui.Primary("✔  Make kiosk");
+        var make = Ui.Primary("✔  Make Easy Display Kiosk");
         make.BackColor = Ui.Good;
         make.Font = new Font("Segoe UI Semibold", 11.5f);
         var restore = Ui.Secondary("↺  Restore original");
@@ -395,6 +403,7 @@ public sealed partial class MainForm : Form
         _doneMenuNote.Text = "Hidden Kiosk menu: hold OK for 3 seconds, or press Up Up Down Down Left Right Left Right (also works while Easy Display Player is open), or press Home twice quickly. From there you can restart Easy Display Player, open App settings / Clear data, open TV Settings, or see all apps.";
         p.Controls.Add(_doneMenuNote);
         p.Controls.Add(_doneDebugNote);
+        p.Controls.Add(ResetOptionsLink());
         var again = Ui.Primary("Set up another TV");
         _turnOffDebug.Click += async (_, _) => await TurnOffDebuggingAsync();
         var close = Ui.Secondary("Close");
@@ -408,7 +417,7 @@ public sealed partial class MainForm : Form
     // ───────────────────────────── navigation ─────────────────────────────
     private bool CanEnter(int idx)
     {
-        if (idx <= 1) return true;
+        if (idx == ResetPage || idx <= 1) return true;
         if (_serial == null) { Status("Connect to the TV first."); return false; }
         if (idx == 3 && !_targetReady) { Status("The kiosk app is not installed on the TV yet."); return false; }
         return true;
@@ -422,10 +431,11 @@ public sealed partial class MainForm : Form
         for (int i = 0; i < _pages.Count; i++) _pages[i].Visible = i == idx;
         RefreshNav();
         bool onDone = idx == DonePage;
-        _back.Visible = idx > 0 && !onDone;
-        _next.Visible = idx < 3; // hide on Make kiosk and the done screen
-        if (_footer != null) _footer.Visible = !onDone;
-        if (!onDone) StartPageWork(idx);
+        bool onReset = idx == ResetPage;
+        _back.Visible = idx > 0 && !onDone && !onReset;
+        _next.Visible = idx < 3 && !onReset; // hide on Make Easy Display Kiosk, done, and reset options
+        if (_footer != null) _footer.Visible = !onDone && !onReset;
+        if (!onDone && !onReset) StartPageWork(idx);
     }
 
     private void RefreshNav()
@@ -433,7 +443,7 @@ public sealed partial class MainForm : Form
         bool done = _page == DonePage;
         for (int i = 0; i < _navItems.Count; i++)
         {
-            bool cur = !done && i == _page;
+            bool cur = !done && _page != ResetPage && i == _page;
             _navItems[i].Text = done
                 ? "✔  " + System.Text.RegularExpressions.Regex.Replace(NavTitles[i], @"^\d+\s+", "")
                 : NavTitles[i];
@@ -871,7 +881,7 @@ public sealed partial class MainForm : Form
             {
                 _kioskResult.ForeColor = Ui.Good; _kioskResult.Text = "This TV is already in kiosk mode. You can run it again or restore the original.";
             }
-            Status("Review the list, then click Make kiosk.");
+            Status("Review the list, then click Make Easy Display Kiosk.");
         }
         finally { SetBusy(false); }
     }
@@ -924,7 +934,7 @@ public sealed partial class MainForm : Form
         var s = _serial;
         try
         {
-            Log("=== Make kiosk ===");
+            Log("=== Make Easy Display Kiosk ===");
             SetStep(0, StepState.Running);
             if (!await _ops.IsInstalledAsync(s, _target, false)) { SetStep(0, StepState.Failed); Fail($"{_target} is not installed on the TV."); return; }
             SetStep(0, StepState.Done);
@@ -1078,6 +1088,7 @@ public sealed partial class MainForm : Form
         _pageCts.Cancel();
         _pageCts = new CancellationTokenSource();
         SetBusy(true, "Disconnecting...");
+        try { await UninstallAllTempIdentifyAsync(); } catch (Exception ex) { Log("Identify cleanup: " + ex.Message); }
         try
         {
             if (!string.IsNullOrEmpty(_serial) && !string.IsNullOrEmpty(_adb.AdbPath))

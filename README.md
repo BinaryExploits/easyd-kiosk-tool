@@ -19,7 +19,7 @@ Windows SmartScreen will likely warn that the app is unrecognized, because the e
 
 ## How to use it
 
-The wizard has four steps: **Prepare → Connect → Easy Display Player → Make kiosk**.
+The wizard has four steps: **Prepare → Connect → Easy Display Player → Make Easy Display Kiosk**.
 
 ### 1. Prepare the TV
 
@@ -43,7 +43,7 @@ On the TV, turn on Developer options, then follow the path that matches your dev
 
 On the PC, run `KioskManager.exe`. On the Prepare step, pick the menu type that matches your TV, then go to Connect. The default connect method follows that choice.
 
-Click **Find my TV** to scan this Wi‑Fi. The tool checks port **5555** on the PC’s local /24 subnet(s) and also uses Google TV / Chromecast discovery (`adb mdns`). Each result shows the IP, model, device name, and whether the kiosk is already installed. If a TV shows **Allow USB debugging?**, tick **Always allow from this computer** and press OK — the row will say **Waiting for Allow on TV** until you do. **Identify** shows a 4-digit code on that TV and in the wizard so you can tell similar TVs apart. Select a row to fill the IP and connect.
+Click **Find my TV** to scan this Wi‑Fi. The tool checks port **5555** on the PC’s local /24 subnet(s) and also uses Google TV / Chromecast discovery (`adb mdns`). Each result shows the IP, model, device name, and whether the kiosk is already installed. If a TV shows **Allow USB debugging?**, tick **Always allow from this computer** and press OK — the row will say **Waiting for Allow on TV** until you do. **Identify** shows a 4-digit code on that TV and in the wizard so you can tell similar TVs apart. If the kiosk app is not already installed, a temporary helper is installed only to show that code — the home screen is not changed — and is uninstalled when the code screen closes, you pick another TV, or you leave the scan. Select a row to fill the IP and connect.
 
 If the scan finds nothing, guest or shop Wi‑Fi often blocks device discovery — type the IP manually instead.
 
@@ -61,9 +61,9 @@ If the scan finds nothing, guest or shop Wi‑Fi often blocks device discovery �
 
 The tool checks whether Easy Display Player is installed. If it is missing, the Play Store page opens on the TV — press **Install** with the remote, and the tool continues by itself. You can also choose a different app under **Advanced**.
 
-### 4. Make kiosk
+### 4. Make Easy Display Kiosk
 
-Click **Make kiosk**. The TV will then open Easy Display Player at start-up and whenever Home is pressed. If the TV asks which home app to use, choose **Easy Display Kiosk Manager** and **Always**. When it finishes, an **All done!** screen shows the TV’s name, IP and Android version, and reminds you how to open the Kiosk menu.
+Click **Make Easy Display Kiosk**. The TV will then open Easy Display Player at start-up and whenever Home is pressed. If the TV asks which home app to use, choose **Easy Display Kiosk Manager** and **Always**. When it finishes, an **All done!** screen shows the TV’s name, IP and Android version, and reminds you how to open the Kiosk menu.
 
 **Set up another TV** disconnects this device and returns to Prepare. **Turn off debugging** (on the All done screen) turns USB debugging off on that TV (`adb_enabled`, and Wireless debugging on Google TV) and disconnects this PC. Debugging is never turned off automatically. **Close** exits.
 
@@ -86,6 +86,57 @@ A factory reset also removes the kiosk.
 To put the original home screen back, run Kiosk Manager again, connect to the same TV, and click **Restore original** on the last step. That re-enables the stock launcher, turns off the kiosk menu shortcut, uninstalls the kiosk app, and leaves your other apps in place.
 
 If you used **Turn off debugging**, first turn **USB debugging** back on in Developer options (and **Wireless debugging** on Google TV). Then connect with Kiosk Manager and click Restore original.
+
+The wizard also has a **Reset options** page (a link on Prepare, Connect, and the All done screen) with every method below, including copyable adb commands.
+
+## Reset options
+
+These are the ways to undo the kiosk, clear Easy Display Player, or start the TV from scratch.
+
+### 1. Factory reset (erases everything)
+
+A factory reset deletes all apps, accounts, Wi‑Fi passwords and settings. You will have to set the device up again. Use this only if you cannot restore the kiosk any other way, or you want a completely clean device.
+
+**Xiaomi Mi TV Stick 4K / Android TV — from Settings:** Settings › Device Preferences › Reset (some regions say Restart, Reset, or Recover; usually the last item under Device Preferences). Confirm the reset. From Xiaomi support: [Factory reset for TV, TV stick, Mi box](https://www.mi.com/global/support/article/KA-12918/) and the Mi TV FAQ (Settings › Device Preference › Reset).
+
+**Xiaomi / Android TV — if the menus will not open:** Unplug the stick from power. Press and hold **Back** and **Confirm (OK)** on the Bluetooth remote at the same time, and plug the power back in while still holding both buttons. When recovery appears, choose **Wipe data / Factory reset** and confirm. From Xiaomi support: the same factory-reset article, and [What to do if the Mi TV Stick cannot enter the main screen?](https://www.mi.com/global/support/faq/details/KA-557214/).
+
+**Google TV / Chromecast — from Settings:** Settings (profile or All settings) › System › About › Factory Reset, then confirm. From Google: [How to factory reset your Chromecast or Google TV Streamer](https://support.google.com/chromecast/answer/6254654).
+
+**Google TV / Chromecast — if the menus will not open:** With the device plugged into the TV and powered on, press and hold the button on the **back** of the Chromecast or Google TV Streamer. The LED blinks yellow. When the light turns **solid white**, release the button — the device resets. From Google’s factory-reset article and [Fix an unresponsive Google TV device](https://support.google.com/googletv/answer/12360626). This cannot be undone and wipes the device.
+
+### 2. Restore the normal launcher with Kiosk Manager
+
+If this PC can still reach the TV, this is the safest option. Connect (debugging must be on) and click **Restore original** on the last step.
+
+### 3. From the TV Kiosk menu
+
+Hold **OK** for about 3 seconds (or Up Up Down Down Left Right Left Right, or Home twice quickly), even while Easy Display Player is open. Choose **TV Settings**, or **App settings / Clear data**.
+
+### 4. Clear Easy Display Player data or uninstall it in Settings
+
+If you can reach Settings: Settings › Apps (on Android TV often Settings › Device Preferences › Apps; on Google TV, Settings › Apps). Choose Easy Display Player, then Clear data / Clear cache, or Uninstall.
+
+### 5. Manual ADB commands (without this tool)
+
+Debugging must be on. If you used **Turn off debugging**, turn USB debugging back on in Developer options (and Wireless debugging on Google TV), then connect with adb.
+
+Xiaomi Mi TV Stick 4K / Android TV:
+
+```
+adb shell pm enable com.google.android.tvlauncher
+adb shell pm enable com.google.android.tungsten.setupwraith
+adb uninstall com.easyd.kiosk
+```
+
+Google TV / Chromecast (also re-enable Google TV’s home screen):
+
+```
+adb shell pm enable com.google.android.tvlauncher
+adb shell pm enable com.google.android.tungsten.setupwraith
+adb shell pm enable com.google.android.apps.tv.launcherx
+adb uninstall com.easyd.kiosk
+```
 
 ## License
 
@@ -113,4 +164,4 @@ cd win && dotnet publish -c Release -o out   # -> win/out/KioskManager.exe (~80 
 
 `win/payload/` is git-ignored. If platform-tools is not embedded, the exe downloads it from Google on first run.
 
-Confirmed on a Xiaomi Mi TV Stick 4K (Android 11) with Easy Display Player, including Connect by IP and Make kiosk. The Google TV pairing path was also used on a Chromecast with Google TV. The Windows UI was built on Linux.
+Confirmed on a Xiaomi Mi TV Stick 4K (Android 11) with Easy Display Player, including Connect by IP and Make Easy Display Kiosk. The Google TV pairing path was also used on a Chromecast with Google TV. The Windows UI was built on Linux.

@@ -19,6 +19,10 @@ public sealed partial class MainForm
     }
 
     private readonly List<TvHit> _tvHits = new();
+    // Serials where Identify temporarily installed the kiosk APK (must uninstall later).
+    private readonly HashSet<string> _tempIdentifySerials = new(StringComparer.Ordinal);
+    private readonly object _tempIdentifyLock = new();
+    private CancellationTokenSource _identifyWatchCts = new();
     private static readonly Regex AddrParts = new(
         @"^(?<ip>\d{1,3}(?:\.\d{1,3}){3})(?::(?<port>\d{2,5}))?$");
 
@@ -27,6 +31,7 @@ public sealed partial class MainForm
         if (string.IsNullOrEmpty(_adb.AdbPath)) return;
         _pageCts.Cancel();
         var ct = _pageCts = new CancellationTokenSource();
+        await UninstallAllTempIdentifyAsync();
         _foundTvs.Controls.Clear();
         _tvHits.Clear();
         _identifyBanner.Visible = false;
@@ -234,6 +239,7 @@ public sealed partial class MainForm
     private async Task UseHitAsync(TvHit hit)
     {
         if (hit?.Endpoint == null) return;
+        await UninstallAllTempIdentifyAsync();
         _ipAddr.Text = hit.Endpoint.Port == 5555 ? hit.Endpoint.Ip : hit.Endpoint.Address;
         _connAddr.Text = hit.Endpoint.Address;
         if (hit.Endpoint.Port == 5555)
@@ -257,48 +263,162 @@ public sealed partial class MainForm
             _identifyBanner.Text = "Waiting for Allow on TV — tick Always allow and press OK, then try Identify again.";
             return;
         }
+
+        string serial = hit.Serial;
+        // Clean up a temporary helper left on any other TV first.
+        await UninstallTempIdentifyExceptAsync(serial);
+
+        bool alreadyInstalled = await _ops.IsInstalledAsync(serial, KioskOps.KioskPkg);
+        hit.KioskInstalled = alreadyInstalled;
+        RefreshTvRow(hit);
+
         string code = Random.Shared.Next(0, 10000).ToString("D4");
         _identifyBanner.Visible = true;
-        _identifyBanner.Text = "Look at the TV for this code:  " + code;
+        _identifyBanner.ForeColor = Ui.Brand;
         Log($"Identify {hit.Endpoint.Address}: {code}");
-        Status("Code " + code + " — compare it with the TV.");
-        bool shown = false;
+
+        bool temporary = false;
         try
         {
-            if (hit.KioskInstalled != false)
+            if (!alreadyInstalled)
             {
-                // IdentifyActivity is exported for explicit adb starts (required on Android 11 TV).
-                var start = await _adb.ShellAsync(hit.Serial,
-                    "am start --user 0 -n com.easyd.kiosk/.IdentifyActivity --es code " + code + " --activity-clear-top",
-                    true, 15000);
-                shown = start.Ok && !start.All.Contains("Error") && !start.All.Contains("Exception") && !start.All.Contains("Permission Denial");
-                if (!shown)
+                _identifyBanner.Text = "Installing a temporary helper on the TV to show the code…";
+                Status("Installing a temporary Identify helper…");
+                // Plain adb install only — do not set the home app, disable launchers, or enable a11y.
+                if (!await _ops.InstallKioskAsync(serial))
                 {
-                    var bc = await _ops.BroadcastAsync(hit.Serial, "com.easyd.kiosk.IDENTIFY", "--es code " + code);
-                    shown = bc.Code == 1;
+                    _identifyBanner.ForeColor = Ui.Warn;
+                    _identifyBanner.Text = "Could not install a helper to show the code on that TV. The number is " + code + " in this window. Use the IP to tell TVs apart, or try Identify again.";
+                    Status("Identify helper could not be installed.");
+                    return;
                 }
+                temporary = true;
+                lock (_tempIdentifyLock) _tempIdentifySerials.Add(serial);
+                Log("Temporary kiosk helper installed for Identify (home screen unchanged).");
             }
+
+            _identifyBanner.Text = "Look at the TV for this code:  " + code;
+            Status("Code " + code + " — compare it with the TV.");
+
+            bool shown = await StartIdentifyActivityAsync(serial, code);
             if (!shown)
             {
-                // Reliable fallback on Android 11 Xiaomi / Google TV when the kiosk app is not installed yet:
-                // a heads-up / notification with the same code.
-                var post = await _adb.ShellAsync(hit.Serial,
-                    "cmd notification post -S bigtext -t \"Kiosk Manager\" km-identify \"This TV's code is " + code + "\"",
-                    true, 15000);
-                shown = post.Ok || post.All.Contains("posting");
-                if (shown)
-                    _identifyBanner.Text = "Look at the TV for this code:  " + code + "  (notification)";
+                _identifyBanner.ForeColor = Ui.Warn;
+                _identifyBanner.Text = "Could not show a full-screen code on that TV. The number is " + code + " in this window. Android TV often hides notifications, so use the IP to tell TVs apart, or try Identify again.";
+                Status("Identify screen did not open.");
+                if (temporary) await UninstallTempIdentifyAsync(serial);
+                return;
             }
-            if (!shown)
-            {
-                _identifyBanner.Text = "Could not show a code on that TV. The number was " + code + " — try again after installing the kiosk, or use the IP to tell TVs apart.";
-            }
+
+            StartWatchIdentifyThenUninstall(serial);
         }
         catch (Exception ex)
         {
             Log("Identify: " + ex.Message);
-            _identifyBanner.Text = "Could not show a code on that TV (" + ex.Message + ").";
+            _identifyBanner.ForeColor = Ui.Warn;
+            _identifyBanner.Text = "Could not show a code on that TV (" + ex.Message + "). The number is " + code + " in this window.";
+            if (temporary) await UninstallTempIdentifyAsync(serial);
         }
+    }
+
+    private async Task<bool> StartIdentifyActivityAsync(string serial, string code)
+    {
+        var start = await _adb.ShellAsync(serial,
+            "am start --user 0 -n com.easyd.kiosk/.IdentifyActivity --es code " + code + " --activity-clear-top",
+            true, 15000);
+        bool shown = start.Ok && !start.All.Contains("Error") && !start.All.Contains("Exception") && !start.All.Contains("Permission Denial");
+        if (!shown)
+        {
+            var bc = await _ops.BroadcastAsync(serial, "com.easyd.kiosk.IDENTIFY", "--es code " + code);
+            shown = bc.Code == 1;
+        }
+        return shown;
+    }
+
+    private void StartWatchIdentifyThenUninstall(string serial)
+    {
+        _identifyWatchCts.Cancel();
+        var cts = _identifyWatchCts = new CancellationTokenSource();
+        var ct = cts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // IdentifyActivity auto-closes after 20 s, or when the user presses Back/OK.
+                var deadline = DateTime.UtcNow.AddSeconds(25);
+                bool seen = false;
+                while (!ct.IsCancellationRequested && DateTime.UtcNow < deadline)
+                {
+                    bool onScreen = await IdentifyActivityOnScreenAsync(serial);
+                    if (onScreen) seen = true;
+                    else if (seen) break;
+                    try { await Task.Delay(700, ct); } catch (TaskCanceledException) { break; }
+                }
+            }
+            catch (Exception ex) { Log("Identify watch: " + ex.Message); }
+            finally
+            {
+                try { await UninstallTempIdentifyAsync(serial); }
+                catch (Exception ex) { Log("Identify cleanup: " + ex.Message); }
+            }
+        });
+    }
+
+    private async Task<bool> IdentifyActivityOnScreenAsync(string serial)
+    {
+        try
+        {
+            var r = await _adb.ShellAsync(serial, "dumpsys activity activities", true, 10000);
+            var text = r.Out ?? "";
+            foreach (var line in text.Split('\n'))
+            {
+                if (line.IndexOf("IdentifyActivity", StringComparison.Ordinal) < 0) continue;
+                // Treat it as on screen only when it is resumed / focused, not merely in the back stack.
+                if (line.IndexOf("mResumedActivity", StringComparison.Ordinal) >= 0
+                    || line.IndexOf("mFocusedApp", StringComparison.Ordinal) >= 0
+                    || line.IndexOf("topResumed", StringComparison.OrdinalIgnoreCase) >= 0
+                    || line.IndexOf("ResumedActivity", StringComparison.Ordinal) >= 0)
+                    return true;
+            }
+            return false;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>Uninstall a helper that Identify installed, only if it was not already on the TV. Does not change the home app.</summary>
+    internal async Task UninstallTempIdentifyAsync(string serial)
+    {
+        if (string.IsNullOrEmpty(serial)) return;
+        bool ours;
+        lock (_tempIdentifyLock) ours = _tempIdentifySerials.Remove(serial);
+        if (!ours) return;
+        try
+        {
+            var r = await _adb.RunAsync(60000, false, "-s", serial, "uninstall", KioskOps.KioskPkg);
+            Log(r.Out.Contains("Success")
+                ? "Temporary Identify helper removed (home screen unchanged)."
+                : "Could not remove the temporary Identify helper: " + r.All);
+        }
+        catch (Exception ex)
+        {
+            Log("Temporary Identify uninstall: " + ex.Message);
+        }
+    }
+
+    internal async Task UninstallTempIdentifyExceptAsync(string keepSerial)
+    {
+        List<string> others;
+        lock (_tempIdentifyLock)
+            others = _tempIdentifySerials.Where(s => !string.Equals(s, keepSerial, StringComparison.Ordinal)).ToList();
+        foreach (var s in others) await UninstallTempIdentifyAsync(s);
+    }
+
+    internal async Task UninstallAllTempIdentifyAsync()
+    {
+        _identifyWatchCts.Cancel();
+        List<string> all;
+        lock (_tempIdentifyLock) all = _tempIdentifySerials.ToList();
+        foreach (var s in all) await UninstallTempIdentifyAsync(s);
     }
 
     private async Task TurnOffDebuggingAsync()

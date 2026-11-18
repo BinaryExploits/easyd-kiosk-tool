@@ -21,6 +21,8 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.AbsListView;
 import android.widget.ArrayAdapter;
+import android.animation.AnimatorInflater;
+import android.widget.ImageView;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -68,19 +70,23 @@ public class KioskMenuActivity extends Activity {
         String label = targetLabel();
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(Color.BLACK);
+        scroll.setClipToPadding(false);
+        scroll.setClipChildren(false);
+        scroll.setBackgroundColor(0xFF0B1020);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(32), dp(36), dp(32), dp(36));
-        root.setBackgroundColor(Color.BLACK);
+        root.setPadding(dp(48), dp(20), dp(48), dp(20));
+        root.setBackgroundColor(0xFF0B1020);
+        root.setClipToPadding(false);
+        root.setClipChildren(false);
 
         TextView title = new TextView(this);
         title.setText("Kiosk menu");
         title.setTextColor(Color.WHITE);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 34);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         title.setGravity(Gravity.CENTER);
-        title.setPadding(0, 0, 0, dp(8));
+        title.setPadding(0, 0, 0, dp(4));
         root.addView(title, lp());
 
         TextView hint = new TextView(this);
@@ -88,14 +94,14 @@ public class KioskMenuActivity extends Activity {
         hint.setTextColor(0xFFB0BEC5);
         hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         hint.setGravity(Gravity.CENTER);
-        hint.setPadding(0, 0, 0, dp(20));
+        hint.setPadding(0, 0, 0, dp(12));
         root.addView(hint, lp());
 
-        Button first = addBtn(root, "Restart " + label, v -> restartTarget());
-        addBtn(root, "App settings / Clear data", v -> openAppSettings());
-        addBtn(root, "TV Settings", v -> openTvSettings());
-        addBtn(root, "All apps", v -> showAllApps());
-        addBtn(root, "Back to " + label, v -> backToTarget());
+        View first = addCard(root, R.drawable.ic_restart, "Restart " + label, v -> restartTarget());
+        addCard(root, R.drawable.ic_app_settings, "App settings / Clear data", v -> openAppSettings());
+        addCard(root, R.drawable.ic_tv_settings, "TV Settings", v -> openTvSettings());
+        addCard(root, R.drawable.ic_all_apps, "All apps", v -> showAllApps());
+        addCard(root, R.drawable.ic_back_player, "Back to " + label, v -> backToTarget());
 
         scroll.addView(root, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -107,7 +113,7 @@ public class KioskMenuActivity extends Activity {
         showingApps = true;
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.BLACK);
+        root.setBackgroundColor(0xFF0B1020);
         root.setPadding(dp(24), dp(24), dp(24), dp(16));
 
         TextView title = new TextView(this);
@@ -126,7 +132,7 @@ public class KioskMenuActivity extends Activity {
 
         List<AppEntry> apps = listLaunchableApps();
         ListView list = new ListView(this);
-        list.setBackgroundColor(Color.BLACK);
+        list.setBackgroundColor(0xFF0B1020);
         list.setDivider(new ColorDrawable(0xFF37474F));
         list.setDividerHeight(1);
         list.setSelector(new ColorDrawable(0xFF1565C0));
@@ -139,25 +145,49 @@ public class KioskMenuActivity extends Activity {
         if (!apps.isEmpty()) list.post(() -> list.requestFocus());
     }
 
-    private Button addBtn(LinearLayout root, String text, View.OnClickListener click) {
-        Button b = new Button(this);
-        b.setText(text);
-        b.setAllCaps(false);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-        b.setPadding(dp(28), dp(22), dp(28), dp(22));
-        b.setTextColor(Color.WHITE);
-        b.setFocusable(true);
-        b.setFocusableInTouchMode(true);
-        b.setBackgroundColor(0xFF37474F);
-        b.setOnFocusChangeListener((v, has) ->
-                v.setBackgroundColor(has ? 0xFF1565C0 : 0xFF37474F));
-        b.setOnClickListener(click);
+    private View addCard(LinearLayout root, int icon, String text, View.OnClickListener click) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setBackgroundResource(R.drawable.menu_card);
+        try {
+            card.setStateListAnimator(AnimatorInflater.loadStateListAnimator(this, R.animator.menu_card_state));
+        } catch (Exception ignored) {
+        }
+        card.setElevation(dp(2));
+        card.setFocusable(true);
+        card.setFocusableInTouchMode(true);
+        card.setClickable(true);
+        card.setPadding(dp(28), dp(14), dp(28), dp(14));
+        card.setAlpha(0.82f);
+
+        ImageView iv = new ImageView(this);
+        iv.setImageResource(icon);
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(40), dp(40));
+        iv.setLayoutParams(ip);
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        card.addView(iv);
+
+        TextView tv = new TextView(this);
+        tv.setText(text);
+        tv.setTextColor(Color.WHITE);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        tv.setPadding(dp(20), 0, 0, 0);
+        tv.setDuplicateParentStateEnabled(true);
+        card.addView(tv, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        card.setOnClickListener(click);
+        card.setOnFocusChangeListener((v, has) -> {
+            v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(150).start();
+            v.setAlpha(has ? 1f : 0.82f);
+        });
+
         LinearLayout.LayoutParams p = lp();
         p.width = ViewGroup.LayoutParams.MATCH_PARENT;
-        p.topMargin = dp(8);
-        p.bottomMargin = dp(8);
-        root.addView(b, p);
-        return b;
+        p.topMargin = dp(4);
+        p.bottomMargin = dp(4);
+        root.addView(card, p);
+        return card;
     }
 
     private void restartTarget() {

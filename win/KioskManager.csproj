@@ -16,7 +16,7 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <DebugType>none</DebugType>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <Product>Kiosk Manager</Product>
     <Company>EasyDisplay</Company>
     <Description>Turns an Android TV device into an Easy Display Player kiosk</Description>
