@@ -1,14 +1,12 @@
 package com.easyd.kiosk;
 
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -22,15 +20,18 @@ import java.util.ArrayDeque;
 /**
  * Home screen that only ever opens the configured target app.
  *
- * Hidden escape hatches (so the device can never be locked out):
- *  - Hold OK / Enter for ~3 seconds while this screen is visible (shown briefly after Home is pressed,
- *    or permanently when the target app is missing) -> opens Android Settings.
- *  - Key sequence Up Up Down Down Left Right Left Right -> opens Android Settings.
- *  - Over adb: Kiosk Manager's "Restore original" (or `adb uninstall com.easyd.kiosk` plus `pm enable`).
+ * Hidden escape (so the device can never be locked out):
+ *  - Hold OK / Enter for ~3 seconds, or press Up Up Down Down Left Right Left Right.
+ *    A companion AccessibilityService sees these keys even when another app is in front.
+ *  - Press Home twice quickly while this activity is coming to the front.
+ *  Either one opens the Kiosk menu (restart the target, its app settings, Android TV Settings,
+ *  or all apps). A later Home press returns here and relaunches the target.
+ *  Over adb: Kiosk Manager's "Restore original" (or `adb uninstall com.easyd.kiosk` plus `pm enable`).
  */
 public class KioskActivity extends Activity {
     private static final long SPLASH_MS = 2000;
-    private static final long HOLD_FOR_SETTINGS_MS = 3000;
+    private static final long HOLD_FOR_MENU_MS = 3000;
+    private static final long DOUBLE_HOME_MS = 1200;
     private static final long LOOP_WINDOW_MS = 20000;
     private static final int LOOP_MAX_LAUNCHES = 4;
     private static final int[] SEQ = {
@@ -45,8 +46,23 @@ public class KioskActivity extends Activity {
     private final Runnable autoLaunch = this::launchTarget;
     private TextView title, msg;
     private int seqPos = 0;
-    private boolean okDown = false, settingsOpenedByHold = false;
-    private boolean autoEnabled = true;
+    private boolean okDown = false, menuOpenedByHold = false;
+    private long lastHomeAt;
+    // Static so the Kiosk menu can suppress auto-relaunch while the user is in Settings
+    // or another app. Home (onNewIntent) turns it back on.
+    static boolean autoEnabled = true;
+
+    static void suppressAutoLaunch() { autoEnabled = false; }
+
+    static void openMenu(android.content.Context c) {
+        if (c == null) return;
+        suppressAutoLaunch();
+        android.content.Intent i = new android.content.Intent(c, KioskMenuActivity.class);
+        i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                | android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        try { c.startActivity(i); } catch (Exception ignored) { }
+    }
 
     @Override
     protected void onCreate(Bundle b) {
@@ -70,20 +86,36 @@ public class KioskActivity extends Activity {
         root.addView(msg);
         setContentView(root);
         root.requestFocus();
+        noteHomePress();
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        setIntent(intent);
+        // Two quick Home presses open the Kiosk menu instead of relaunching the target.
+        if (noteHomePress()) {
+            h.removeCallbacks(autoLaunch);
+            openMenu(this);
+            return;
+        }
         // Home pressed again: give auto-launch another chance even after a crash-loop stop.
         autoEnabled = true;
+    }
+
+    /** @return true if this Home press is the second of a quick double-Home. */
+    private boolean noteHomePress() {
+        long now = SystemClock.elapsedRealtime();
+        boolean twice = lastHomeAt != 0 && now - lastHomeAt <= DOUBLE_HOME_MS;
+        lastHomeAt = twice ? 0 : now;
+        return twice;
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         okDown = false;
-        settingsOpenedByHold = false;
+        menuOpenedByHold = false;
         seqPos = 0;
         String target = Prefs.target(this);
         Intent li = Prefs.launchIntent(this, target);
@@ -145,22 +177,9 @@ public class KioskActivity extends Activity {
         }
     }
 
-    private void openSettings() {
+    private void openMenu() {
         h.removeCallbacks(autoLaunch);
-        autoEnabled = false;
-        Intent[] tries = {
-                new Intent(Settings.ACTION_SETTINGS),
-                new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings.MainSettings"),
-                new Intent().setPackage("com.android.tv.settings").setAction(Intent.ACTION_MAIN)};
-        for (Intent i : tries) {
-            try {
-                startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                return;
-            } catch (ActivityNotFoundException ignored) {
-            } catch (SecurityException ignored) {
-            }
-        }
-        showMessage("Settings not found", "Use Kiosk Manager's Restore button over adb.");
+        openMenu(this);
     }
 
     private static boolean isOk(int k) {
@@ -173,18 +192,18 @@ public class KioskActivity extends Activity {
         // Any key pauses the auto-launch countdown while the user is interacting.
         h.removeCallbacks(autoLaunch);
         if (isOk(keyCode)) {
-            if (e.getRepeatCount() == 0) { okDown = true; settingsOpenedByHold = false; }
-            else if (okDown && !settingsOpenedByHold
-                    && e.getEventTime() - e.getDownTime() >= HOLD_FOR_SETTINGS_MS) {
-                settingsOpenedByHold = true;
-                openSettings();
+            if (e.getRepeatCount() == 0) { okDown = true; menuOpenedByHold = false; }
+            else if (okDown && !menuOpenedByHold
+                    && e.getEventTime() - e.getDownTime() >= HOLD_FOR_MENU_MS) {
+                menuOpenedByHold = true;
+                openMenu();
             }
             return true;
         }
         if (e.getRepeatCount() == 0) {
             if (keyCode == SEQ[seqPos]) {
                 seqPos++;
-                if (seqPos == SEQ.length) { seqPos = 0; openSettings(); }
+                if (seqPos == SEQ.length) { seqPos = 0; openMenu(); }
             } else {
                 seqPos = (keyCode == SEQ[0]) ? 1 : 0;
             }
@@ -196,9 +215,9 @@ public class KioskActivity extends Activity {
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent e) {
         if (isOk(keyCode)) {
-            boolean wasHold = settingsOpenedByHold;
+            boolean wasHold = menuOpenedByHold;
             okDown = false;
-            settingsOpenedByHold = false;
+            menuOpenedByHold = false;
             if (!wasHold) {
                 // Short press = open the app now (also clears a crash-loop stop).
                 launches.clear();

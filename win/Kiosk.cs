@@ -29,6 +29,8 @@ public sealed class KioskOps
     public const string HomeComponent = "com.easyd.kiosk/.HomeAlias";
     public const string ReceiverComponent = "com.easyd.kiosk/.ConfigReceiver";
     public const string DeviceStateFile = "/data/local/tmp/easyd_kiosk_disabled.txt";
+    public const string A11yComponent = "com.easyd.kiosk/com.easyd.kiosk.KioskKeyService";
+    public const string A11yComponentShort = "com.easyd.kiosk/.KioskKeyService";
 
     public static readonly string[] KnownStock =
     {
@@ -193,5 +195,45 @@ public sealed class KioskOps
     {
         try { File.Delete(LocalStatePath(deviceId)); } catch { }
         await _adb.ShellAsync(s, $"rm -f {DeviceStateFile}", true);
+    }
+
+    static bool IsOurA11y(string c)
+        => c == A11yComponent || c == A11yComponentShort
+           || c.Equals(A11yComponent, StringComparison.OrdinalIgnoreCase)
+           || c.Equals(A11yComponentShort, StringComparison.OrdinalIgnoreCase);
+
+    static List<string> SplitA11y(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "null") return new List<string>();
+        return raw.Split(':').Select(x => x.Trim()).Where(x => x.Length > 0 && x != "null").ToList();
+    }
+
+    public async Task<string> GetEnabledA11yAsync(string s)
+        => (await _adb.ShellAsync(s, "settings get secure enabled_accessibility_services", true)).Out.Trim();
+
+    /// <summary>Append our key-service to enabled_accessibility_services and turn accessibility on. Does not overwrite other services.</summary>
+    public async Task<bool> EnableMenuShortcutAsync(string s)
+    {
+        var parts = SplitA11y(await GetEnabledA11yAsync(s));
+        if (!parts.Any(IsOurA11y)) parts.Add(A11yComponent);
+        var joined = string.Join(":", parts);
+        await _adb.ShellAsync(s, "settings put secure enabled_accessibility_services " + joined);
+        await _adb.ShellAsync(s, "settings put secure accessibility_enabled 1");
+        var after = SplitA11y(await GetEnabledA11yAsync(s));
+        bool ok = after.Any(IsOurA11y);
+        _log(ok ? "Kiosk menu shortcut enabled." : "Could not enable the kiosk menu shortcut.");
+        return ok;
+    }
+
+    /// <summary>Remove only our key-service from enabled_accessibility_services. Leaves other services and accessibility_enabled alone.</summary>
+    public async Task<bool> DisableMenuShortcutAsync(string s)
+    {
+        var parts = SplitA11y(await GetEnabledA11yAsync(s));
+        var kept = parts.Where(c => !IsOurA11y(c)).ToList();
+        await _adb.ShellAsync(s, "settings put secure enabled_accessibility_services " + (kept.Count == 0 ? "''" : string.Join(":", kept)));
+        var after = SplitA11y(await GetEnabledA11yAsync(s));
+        bool ok = !after.Any(IsOurA11y);
+        _log(ok ? "Kiosk menu shortcut removed." : "Could not remove the kiosk menu shortcut from accessibility settings.");
+        return ok;
     }
 }

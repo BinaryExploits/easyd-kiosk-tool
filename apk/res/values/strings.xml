@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Easy Display Kiosk Manager</string>
+    <string name="a11y_description">Lets the hidden Kiosk menu open with a long OK press or a key sequence, even when another app is on screen.</string>
 </resources>

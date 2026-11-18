@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace EasyDKiosk;
 
-public sealed class MainForm : Form
+public sealed partial class MainForm : Form
 {
     private readonly Adb _adb;
     private readonly KioskOps _ops;
@@ -57,6 +57,23 @@ public sealed class MainForm : Form
     private readonly ComboBox _devices = new() { Width = 300, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly Label _connResult = Ui.Text("");
     private bool _connectModePicked;
+    private readonly Button _findTv = Ui.Secondary("🔍  Find my TV");
+    private readonly Label _scanStatus = Ui.Text("", 640, Ui.Muted);
+    private readonly Label _identifyBanner = new()
+    {
+        AutoSize = true, MaximumSize = new Size(640, 0),
+        Font = new Font("Segoe UI Semibold", 22f), ForeColor = Ui.Brand,
+        Margin = new Padding(0, 6, 0, 8), Visible = false
+    };
+    private readonly FlowLayoutPanel _foundTvs = new()
+    {
+        AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        FlowDirection = FlowDirection.TopDown, WrapContents = false,
+        Margin = new Padding(0, 4, 0, 8), Width = 660
+    };
+    private readonly Button _turnOffDebug = Ui.Secondary("Turn off debugging");
+    private readonly Label _doneDebugNote = Ui.Text("", 640, Ui.Muted);
+    private readonly Label _doneMenuNote = Ui.Text("", 640, Ui.Muted);
     // page 4: app
     private readonly Label _appStatus = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 13f), Margin = new Padding(0, 8, 0, 8) };
     private readonly Label _appHint = Ui.Text("", 640, Ui.Muted);
@@ -207,6 +224,14 @@ public sealed class MainForm : Form
         p.Controls.Add(_modeIp);
         p.Controls.Add(_modePair);
 
+        _findTv.Click += async (_, _) => await FindTvsAsync();
+        _actionControls.Add(_findTv);
+        p.Controls.Add(Ui.Row(_findTv));
+        p.Controls.Add(Ui.Text("Scans this Wi‑Fi for TVs (port 5555 and Google TV discovery). Select a row to connect. Use Identify if several TVs look the same. You can still type an IP manually below.", 640, Ui.Muted));
+        p.Controls.Add(_scanStatus);
+        p.Controls.Add(_identifyBanner);
+        p.Controls.Add(_foundTvs);
+
         _ipPanel.Controls.Add(Ui.Text(
             "On the TV, turn on Developer options (Settings › Device Preferences › About, then press “Android TV OS build” — or “Build” — 7 times) and turn on USB debugging. " +
             "Find the IP address under Settings › Network & Internet › your Wi‑Fi network. Type that IP below (port 5555 is used if you don’t add a port). " +
@@ -351,7 +376,7 @@ public sealed class MainForm : Form
         _steps.Columns.Add("Status", 190);
         p.Controls.Add(_steps);
         p.Controls.Add(_kioskResult);
-        p.Controls.Add(Ui.Text("Hidden escape on the TV: right after pressing Home, hold OK for 3 seconds (or press Up Up Down Down Left Right Left Right) to open Android Settings.", 640, Ui.Muted));
+        p.Controls.Add(Ui.Text("Hidden Kiosk menu on the TV: hold OK for 3 seconds, or press Up Up Down Down Left Right Left Right (also works while Easy Display Player is open), or press Home twice quickly. The menu can restart Easy Display Player, open its app settings, open TV Settings, or show all apps.", 640, Ui.Muted));
         return p;
     }
 
@@ -367,14 +392,16 @@ public sealed class MainForm : Form
         p.Controls.Add(_doneTitle);
         p.Controls.Add(_doneSubtitle);
         p.Controls.Add(_doneDevice);
-        p.Controls.Add(Ui.Text("To open Android Settings on the TV, hold OK for 3 seconds (or press Up Up Down Down Left Right Left Right).", 640, Ui.Muted));
-        p.Controls.Add(Ui.Text("Unplug USB debugging if you like; Restore original needs it on.", 640, Ui.Muted));
+        _doneMenuNote.Text = "Hidden Kiosk menu: hold OK for 3 seconds, or press Up Up Down Down Left Right Left Right (also works while Easy Display Player is open), or press Home twice quickly. From there you can restart Easy Display Player, open App settings / Clear data, open TV Settings, or see all apps.";
+        p.Controls.Add(_doneMenuNote);
+        p.Controls.Add(_doneDebugNote);
         var again = Ui.Primary("Set up another TV");
+        _turnOffDebug.Click += async (_, _) => await TurnOffDebuggingAsync();
         var close = Ui.Secondary("Close");
         again.Click += async (_, _) => await ResetForAnotherTvAsync();
         close.Click += (_, _) => Close();
-        _actionControls.Add(again); _actionControls.Add(close);
-        p.Controls.Add(Ui.Row(again, close));
+        _actionControls.Add(again); _actionControls.Add(_turnOffDebug); _actionControls.Add(close);
+        p.Controls.Add(Ui.Row(again, _turnOffDebug, close));
         return p;
     }
 
@@ -890,6 +917,7 @@ public sealed class MainForm : Form
                 Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
 
         ResetSteps($"Check {_targetLabel} is installed", "Install the kiosk launcher", $"Set {_targetLabel} as the kiosk app",
+            "Turn on the kiosk menu shortcut",
             "Check the kiosk works as a home screen", "Turn off the other home screens", "Make the kiosk the default home", "Go to the home screen");
         _kioskResult.Text = "";
         SetBusy(true);
@@ -917,16 +945,21 @@ public sealed class MainForm : Form
             SetStep(2, StepState.Done);
 
             SetStep(3, StepState.Running);
+            bool a11yOk = await _ops.EnableMenuShortcutAsync(s);
+            SetStep(3, a11yOk ? StepState.Done : StepState.Failed, a11yOk ? null : "double-Home still works");
+            if (!a11yOk) Log("The kiosk menu shortcut could not be turned on. Holding OK while another app is open may not work; press Home twice quickly instead.");
+
+            SetStep(4, StepState.Running);
             var homes = await _ops.HomeActivitiesAsync(s, quiet: false);
             if (!homes.Any(h => h.Pkg == KioskOps.KioskPkg))
             {
-                SetStep(3, StepState.Failed);
+                SetStep(4, StepState.Failed);
                 Fail("Android does not list the kiosk as a home screen, so nothing was turned off. Your TV is unchanged apart from the extra app.");
                 return;
             }
-            SetStep(3, StepState.Done);
+            SetStep(4, StepState.Done);
 
-            SetStep(4, StepState.Running);
+            SetStep(5, StepState.Running);
             // Remember what we turn off (merged with any earlier run) so Restore can undo it, even from another PC.
             var previous = await _ops.LoadStateAsync(s, _deviceId);
             await _ops.SaveStateAsync(s, _deviceId, previous.Concat(toDisable));
@@ -936,20 +969,20 @@ public sealed class MainForm : Form
                 var r = await _adb.ShellAsync(s, $"pm disable-user --user 0 {p}");
                 if (!r.Out.Contains("disabled")) failed++;
             }
-            SetStep(4, failed == 0 ? StepState.Done : StepState.Failed, $"{toDisable.Count - failed}/{toDisable.Count} turned off");
+            SetStep(5, failed == 0 ? StepState.Done : StepState.Failed, $"{toDisable.Count - failed}/{toDisable.Count} turned off");
 
-            SetStep(5, StepState.Running);
+            SetStep(6, StepState.Running);
             await _adb.ShellAsync(s, $"cmd package set-home-activity --user 0 {KioskOps.HomeComponent}");
             var resolved = await _ops.ResolveHomeAsync(s);
             bool isDefault = resolved.StartsWith(KioskOps.KioskPkg);
-            SetStep(5, isDefault ? StepState.Done : StepState.Failed, isDefault ? null : "TV may ask which home to use");
+            SetStep(6, isDefault ? StepState.Done : StepState.Failed, isDefault ? null : "TV may ask which home to use");
             if (!isDefault) Log($"Home currently resolves to: {resolved}. If the TV asks, choose “{"Easy Display Kiosk Manager"}” and “Always”.");
 
-            SetStep(6, StepState.Running);
+            SetStep(7, StepState.Running);
             await _adb.ShellAsync(s, "input keyevent KEYCODE_HOME");
-            SetStep(6, StepState.Done);
+            SetStep(7, StepState.Done);
 
-            _kioskResult.ForeColor = failed == 0 && isDefault ? Ui.Good : Ui.Warn;
+            _kioskResult.ForeColor = failed == 0 && isDefault && a11yOk ? Ui.Good : Ui.Warn;
             _kioskResult.Text = failed == 0 && isDefault
                 ? $"✔ Done! The TV now opens {_targetLabel} on start-up and when Home is pressed."
                 : "⚠ Mostly done — see the steps above and the log. The TV may ask which home app to use: choose “Easy Display Kiosk Manager” → Always.";
@@ -971,7 +1004,7 @@ public sealed class MainForm : Form
     {
         if (_serial == null) return;
         if (MessageBox.Show(this, "Restore the TV's original home screen and remove the kiosk launcher?", Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
-        ResetSteps("Turn the original home screens back on", "Remove the kiosk launcher", "Go to the home screen");
+        ResetSteps("Turn the original home screens back on", "Turn off the kiosk menu shortcut", "Remove the kiosk launcher", "Go to the home screen");
         _kioskResult.Text = "";
         SetBusy(true);
         var s = _serial;
@@ -987,13 +1020,17 @@ public sealed class MainForm : Form
             SetStep(0, StepState.Done, $"{toEnable.Count} turned on");
 
             SetStep(1, StepState.Running);
+            bool a11yOff = await _ops.DisableMenuShortcutAsync(s);
+            SetStep(1, a11yOff ? StepState.Done : StepState.Failed);
+
+            SetStep(2, StepState.Running);
             if (await _ops.IsInstalledAsync(s, KioskOps.KioskPkg))
             {
                 await _ops.BroadcastAsync(s, "com.easyd.kiosk.DISABLE_HOME");
                 var r = await _adb.RunAsync(60000, false, "-s", s, "uninstall", KioskOps.KioskPkg);
-                SetStep(1, r.Out.Contains("Success") ? StepState.Done : StepState.Failed);
+                SetStep(2, r.Out.Contains("Success") ? StepState.Done : StepState.Failed);
             }
-            else SetStep(1, StepState.Skipped, "not installed");
+            else SetStep(2, StepState.Skipped, "not installed");
             await _ops.ClearStateAsync(s, _deviceId);
 
             // Prefer the stock launcher as default again if several homes exist.
@@ -1002,9 +1039,9 @@ public sealed class MainForm : Form
             if (stock.Pkg == null) stock = homes.FirstOrDefault(h => h.Pkg == "com.google.android.tvlauncher");
             if (stock.Pkg != null) await _adb.ShellAsync(s, $"cmd package set-home-activity --user 0 {stock.Component}");
 
-            SetStep(2, StepState.Running);
+            SetStep(3, StepState.Running);
             await _adb.ShellAsync(s, "input keyevent KEYCODE_HOME");
-            SetStep(2, StepState.Done);
+            SetStep(3, StepState.Done);
             _kioskResult.ForeColor = Ui.Good;
             _kioskResult.Text = "✔ Restored. The TV is back to its original home screen.";
             Status("Restored.");
@@ -1029,6 +1066,9 @@ public sealed class MainForm : Form
         if (!string.IsNullOrWhiteSpace(_serial)) parts.Add(_serial);
         if (!string.IsNullOrWhiteSpace(_deviceAndroid)) parts.Add("Android " + _deviceAndroid);
         _doneDevice.Text = string.Join("  ·  ", parts);
+        _turnOffDebug.Enabled = _serial != null;
+        _doneDebugNote.ForeColor = Ui.Muted;
+        _doneDebugNote.Text = "When you are finished, you can press Turn off debugging so this PC can no longer reach the TV.";
         ShowPage(DonePage);
         Status(restored ? "Restored." : "Kiosk ready.");
     }
@@ -1064,6 +1104,12 @@ public sealed class MainForm : Form
         _ipAddr.Text = "";
         _connAddr.Text = "";
         _connResult.Text = "";
+        _scanStatus.Text = "";
+        _identifyBanner.Text = "";
+        _identifyBanner.Visible = false;
+        _foundTvs.Controls.Clear();
+        _turnOffDebug.Enabled = true;
+        _doneDebugNote.Text = "";
         _devices.Items.Clear();
         _appStatus.Text = "";
         _appHint.Text = "";

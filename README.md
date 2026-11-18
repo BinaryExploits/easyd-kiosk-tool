@@ -43,6 +43,10 @@ On the TV, turn on Developer options, then follow the path that matches your dev
 
 On the PC, run `KioskManager.exe`. On the Prepare step, pick the menu type that matches your TV, then go to Connect. The default connect method follows that choice.
 
+Click **Find my TV** to scan this Wi‑Fi. The tool checks port **5555** on the PC’s local /24 subnet(s) and also uses Google TV / Chromecast discovery (`adb mdns`). Each result shows the IP, model, device name, and whether the kiosk is already installed. If a TV shows **Allow USB debugging?**, tick **Always allow from this computer** and press OK — the row will say **Waiting for Allow on TV** until you do. **Identify** shows a 4-digit code on that TV and in the wizard so you can tell similar TVs apart. Select a row to fill the IP and connect.
+
+If the scan finds nothing, guest or shop Wi‑Fi often blocks device discovery — type the IP manually instead.
+
 **Xiaomi / Android TV: Connect by IP (USB debugging)**
 
 1. Type the TV’s IP address (port **5555** is used if you do not add a port; `ip:port` is also accepted) and click **Connect**.
@@ -59,22 +63,29 @@ The tool checks whether Easy Display Player is installed. If it is missing, the 
 
 ### 4. Make kiosk
 
-Click **Make kiosk**. The TV will then open Easy Display Player at start-up and whenever Home is pressed. If the TV asks which home app to use, choose **Easy Display Kiosk Manager** and **Always**. When it finishes, an **All done!** screen shows the TV’s name, IP and Android version, and reminds you how to reach Settings.
+Click **Make kiosk**. The TV will then open Easy Display Player at start-up and whenever Home is pressed. If the TV asks which home app to use, choose **Easy Display Kiosk Manager** and **Always**. When it finishes, an **All done!** screen shows the TV’s name, IP and Android version, and reminds you how to open the Kiosk menu.
 
-**Set up another TV** disconnects this device and returns to Prepare. **Close** exits.
+**Set up another TV** disconnects this device and returns to Prepare. **Turn off debugging** (on the All done screen) turns USB debugging off on that TV (`adb_enabled`, and Wireless debugging on Google TV) and disconnects this PC. Debugging is never turned off automatically. **Close** exits.
 
-## Hidden way to reach Settings
+## Hidden Kiosk menu
 
-The kiosk can look locked to Easy Display Player. To open Android Settings on the TV (no PC needed), press Home, then while the dark Easy Display Player screen is showing (about 2 seconds), or whenever the “App not available” screen is shown:
+The kiosk can look locked to Easy Display Player. To open a menu on the TV (no PC needed), hold **OK** (or the Centre / Enter key) for about 3 seconds, or press **Up Up Down Down Left Right Left Right**. This also works while Easy Display Player is in the foreground. You can also press **Home** twice quickly.
 
-- hold **OK** for 3 seconds, or
-- press **Up Up Down Down Left Right Left Right**
+The menu can:
+
+- **Restart Easy Display Player**
+- **App settings / Clear data** (the TV’s app-info screen for Easy Display Player, where you can clear data or force stop)
+- **TV Settings**
+- **All apps**
+- **Back to Easy Display Player**
 
 A factory reset also removes the kiosk.
 
 ## Restore original
 
-To put the original home screen back, run Kiosk Manager again, connect to the same TV (USB debugging or Wireless debugging must be on), and click **Restore original** on the last step. That re-enables the stock launcher, uninstalls the kiosk app, and leaves your other apps in place.
+To put the original home screen back, run Kiosk Manager again, connect to the same TV, and click **Restore original** on the last step. That re-enables the stock launcher, turns off the kiosk menu shortcut, uninstalls the kiosk app, and leaves your other apps in place.
+
+If you used **Turn off debugging**, first turn **USB debugging** back on in Developer options (and **Wireless debugging** on Google TV). Then connect with Kiosk Manager and click Restore original.
 
 ## License
 

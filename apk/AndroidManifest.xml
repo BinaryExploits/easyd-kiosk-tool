@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.easyd.kiosk"
-    android:versionCode="3"
-    android:versionName="1.0.3">
+    android:versionCode="4"
+    android:versionName="1.0.4">
 
     <uses-sdk android:minSdkVersion="30" android:targetSdkVersion="34" />
+
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-    <!-- Android 11+ package visibility: lets us see and launch any launchable app (the chosen target). -->
+    <!-- Android 11+ package visibility: launchable apps, plus Settings / app-details. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -18,6 +20,13 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.SETTINGS" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.APPLICATION_DETAILS_SETTINGS" />
+            <data android:scheme="package" />
         </intent>
     </queries>
 
@@ -38,6 +47,37 @@
             android:resumeWhilePausing="true"
             android:screenOrientation="unspecified"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|density" />
+
+        <activity
+            android:name=".KioskMenuActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:taskAffinity="com.easyd.kiosk.menu"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|density" />
+
+        <!-- Shown by Kiosk Manager's Identify button (started over adb). Not a home screen. -->
+        <activity
+            android:name=".IdentifyActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.easyd.kiosk.identify"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|density" />
+
+        <service
+            android:name=".KioskKeyService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/kiosk_accessibility" />
+        </service>
 
         <!-- The HOME entry point. Disabled until a target app is configured, so installing the APK
              alone never changes the device's home screen. Enabled by ConfigReceiver (SET_TARGET). -->
@@ -66,6 +106,7 @@
                 <action android:name="com.easyd.kiosk.GET_TARGET" />
                 <action android:name="com.easyd.kiosk.LIST_APPS" />
                 <action android:name="com.easyd.kiosk.DISABLE_HOME" />
+                <action android:name="com.easyd.kiosk.IDENTIFY" />
             </intent-filter>
         </receiver>
     </application>

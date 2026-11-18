@@ -19,6 +19,7 @@ import java.util.Map;
  *  am broadcast --include-stopped-packages -n com.easyd.kiosk/.ConfigReceiver -a com.easyd.kiosk.GET_TARGET
  *  am broadcast --include-stopped-packages -n com.easyd.kiosk/.ConfigReceiver -a com.easyd.kiosk.LIST_APPS
  *  am broadcast --include-stopped-packages -n com.easyd.kiosk/.ConfigReceiver -a com.easyd.kiosk.DISABLE_HOME
+ *  am broadcast --include-stopped-packages -n com.easyd.kiosk/.ConfigReceiver -a com.easyd.kiosk.IDENTIFY --es code 1234
  */
 public class ConfigReceiver extends BroadcastReceiver {
     @Override
@@ -46,6 +47,16 @@ public class ConfigReceiver extends BroadcastReceiver {
             case "com.easyd.kiosk.LIST_APPS":
                 reply(1, "APPS:" + listApps(c));
                 return;
+            case "com.easyd.kiosk.IDENTIFY": {
+                String code = intent.getStringExtra("code");
+                if (code == null || code.trim().isEmpty()) { reply(0, "ERR:no_code"); return; }
+                Intent i = new Intent(c, IdentifyActivity.class);
+                i.putExtra("code", code.trim());
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                c.startActivity(i);
+                reply(1, "OK:identify:" + code.trim());
+                return;
+            }
             default:
         }
     }
