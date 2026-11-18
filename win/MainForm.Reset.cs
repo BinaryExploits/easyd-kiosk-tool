@@ -33,7 +33,7 @@ public sealed partial class MainForm
         back.Click += (_, _) =>
         {
             int to = _resetReturnPage;
-            if (to == ResetPage || to < 0 || to >= DonePage + 1) to = 0;
+            if (to == ResetPage || to < 0 || to >= _pages.Count) to = 0;
             ShowPage(to);
         };
         _actionControls.Add(back);

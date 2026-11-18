@@ -47,6 +47,50 @@ public sealed partial class MainForm
         return wrap;
     }
 
+    private const int WifiTipsPage = 6;
+    private int _wifiTipsReturnPage;
+
+    private void ShowWifiTips()
+    {
+        _wifiTipsReturnPage = (_page == WifiTipsPage) ? 0 : _page;
+        ShowPage(WifiTipsPage);
+        Status("Wi-Fi setup tips.");
+    }
+
+    private LinkLabel WifiTipsLink()
+    {
+        var l = new LinkLabel
+        {
+            Text = "Wi-Fi tips (complex password?)",
+            AutoSize = true,
+            Margin = new Padding(0, 8, 0, 8),
+            LinkColor = Ui.Brand,
+            ActiveLinkColor = Ui.Brand
+        };
+        l.LinkClicked += (_, _) => ShowWifiTips();
+        return l;
+    }
+
+    private Control PageWifiTips()
+    {
+        var p = Ui.Page();
+        var back = Ui.Secondary("◀  Back");
+        back.Click += (_, _) =>
+        {
+            int to = _wifiTipsReturnPage;
+            if (to == WifiTipsPage || to < 0 || to >= _pages.Count) to = 0;
+            ShowPage(to);
+        };
+        _actionControls.Add(back);
+        p.Controls.Add(Ui.Row(back));
+        p.Controls.Add(Ui.Heading("Wi-Fi setup tips"));
+        p.Controls.Add(BuildShopWifiIntro(includeDiagram: true));
+        p.Controls.Add(Ui.Text(
+            "On Android 11 or newer, Move TV to shop Wi-Fi (and Set up selected TVs, if you tick Save shop Wi-Fi) saves the shop network without removing the setup network, even if the shop Wi-Fi is out of range. If a TV does switch to the shop Wi-Fi straight away, this PC will lose that TV until you join the same shop Wi-Fi and use Find my TV. Kiosk Manager does not change this PC’s Wi-Fi for you. On Google TV / Chromecast, Wireless debugging usually turns off after a network change, so turn it back on (and pair again if asked) before you reconnect. Press Turn off debugging only after you have saved shop Wi-Fi, if you still want later access from this PC.",
+            640, Ui.Muted));
+        return p;
+    }
+
     private PictureBox WifiSetupDiagramBox()
     {
         try
@@ -90,8 +134,8 @@ public sealed partial class MainForm
             AutoSize = true, Font = new Font("Segoe UI Semibold", 13f), ForeColor = Ui.Brand,
             Margin = new Padding(0, 8, 0, 4)
         });
-        p.Controls.Add(BuildShopWifiIntro(includeDiagram: true));
         p.Controls.Add(Ui.Text(WifiMove.ShopWifiStepHelp(), 640, Ui.Muted));
+        p.Controls.Add(WifiTipsLink());
 
         p.Controls.Add(Ui.Row(new Label { Text = "Network name (SSID)", AutoSize = true }, _wifiSsid));
 

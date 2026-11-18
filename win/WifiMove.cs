@@ -163,9 +163,7 @@ internal static class WifiMove
            + "Fallback: Temporarily set a simple password on the shop Wi-Fi itself while you set up the TVs. When you change the password back, every device on that Wi-Fi is disconnected, and each one — including every TV — must rejoin with the original password.";
 
     public static string ShopWifiStepHelp()
-        => "This button is never automatic. It saves your shop Wi-Fi on this TV without removing the simple setup network, even if the shop network is out of range right now — the TV can join it later. You will be asked to check the network name, security, and password before anything is sent. The password is not saved on this PC.\r\n\r\n"
-           + "If you are setting up several TVs, save the shop network on each one first and stay on the setup Wi-Fi until you have finished them all. If a TV does switch to the shop Wi-Fi straight away, this PC will lose that TV until you join the same shop Wi-Fi and use Find my TV. Kiosk Manager does not change this PC’s Wi-Fi for you. On Google TV / Chromecast, Wireless debugging usually turns off after a network change, so turn it back on (and pair again if asked) before you reconnect.\r\n\r\n"
-           + "Press Turn off debugging only after this step if you still want later access from this PC.";
+        => "Never automatic. Enter the shop network name, security, and password; you will be asked to check them before they are sent. This saves the shop Wi-Fi on the TV without removing the setup network, even if the shop network is out of range. The password is not saved on this PC. If you have more TVs to set up, stay on the setup Wi-Fi until you have finished them all.";
 
     /// <summary>Confirmation dialog body. Includes the password so the shopkeeper can check it. Do not write this to the log or to disk.</summary>
     public static string ConfirmDetails(string ssid, Security security, string password)

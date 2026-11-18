@@ -23,17 +23,9 @@ The wizard has four steps: **Prepare → Connect → Easy Display Player → Mak
 
 ### 1. Prepare the TV
 
-If your shop Wi-Fi password is too long or awkward to type with the TV remote, use one of these options. This is for setting TVs up in the shop — including several TVs in one visit.
+Do this once on each TV with the remote. Keep the TV on, and keep this PC on the same Wi-Fi as the TV. If the shop Wi-Fi password is awkward to type on the remote, see [Wi-Fi setup tips](#wi-fi-setup-tips) (the wizard has the same page, from **Wi-Fi tips (complex password?)**).
 
-**Recommended:** Add a child network with a second small router (a travel router) connected to your shop router, and give that child network a short, easy password. Join this PC and each TV to that simple setup Wi-Fi, then set up the kiosk on each TV. When a TV is ready, use **Move TV to shop Wi-Fi** (or **Set up selected TVs** for several at once) to save your shop network on it. The setup network stays saved too. The TV will join the shop Wi-Fi when that network is in range — often after you have finished the others. You do not need to type the shop password on the remote.
-
-**Fallback:** Temporarily set a simple password on the shop Wi-Fi itself while you set up the TVs. When you change the password back, every device on that Wi-Fi is disconnected, and each one — including every TV — must rejoin with the original password.
-
-![Recommended: travel router child network](docs/wifi-setup-diagram.png)
-
-The travel router joins the shop Wi-Fi. The TV stick and this PC join the travel router’s simple setup Wi-Fi. At the end, save the shop Wi-Fi on each TV (the setup network is left saved). Shop Wi-Fi sometimes blocks devices from finding each other, or shows a login page a TV cannot complete; a travel router avoids that, and Kiosk Manager can still find the TVs with Find my TV.
-
-Then, on each TV, turn on Developer options and follow the path that matches the device.
+On each TV, turn on Developer options and follow the path that matches the device.
 
 ### 2. Connect this PC to the TV
 
@@ -41,7 +33,7 @@ On the PC, run `KioskManager.exe`. On the Prepare step, pick the menu type that 
 
 Click **Find my TV** to scan this Wi‑Fi. The tool checks port **5555** on the PC’s local /24 subnet(s) and also uses Google TV / Chromecast discovery (`adb mdns`). Each result shows the IP, model, device name, and whether the kiosk is already installed. If a TV shows **Allow USB debugging?**, tick **Always allow from this computer** and press OK — the row will say **Waiting for Allow on TV** until you do. **Identify** shows a 4-digit code on that TV and in the wizard so you can tell similar TVs apart. If the kiosk app is not already installed, a temporary helper is installed only to show that code — the home screen is not changed — and is uninstalled when the code screen closes, you pick another TV, or you leave the scan. Select a row to fill the IP and connect, or tick several TVs and click **Set up selected TVs** to make each one a kiosk in one go (see below).
 
-If the scan finds nothing, shop Wi-Fi often blocks device discovery — type the IP manually instead, or use the travel-router setup on the Prepare step so this PC and the TVs are on the same simple network.
+If the scan finds nothing, shop Wi-Fi often blocks device discovery — type the IP manually instead, or use a travel-router setup (see [Wi-Fi setup tips](#wi-fi-setup-tips)) so this PC and the TVs are on the same simple network.
 
 **Xiaomi / Android TV: Connect by IP (USB debugging)**
 
@@ -55,7 +47,7 @@ If the scan finds nothing, shop Wi-Fi often blocks device discovery — type the
 
 ### 3. Easy Display Player
 
-The tool checks whether Easy Display Player is installed. If it is missing, the Play Store page opens on the TV — press **Install** with the remote, and the tool continues by itself. You can also choose a different app under **Advanced**.
+The tool checks whether Easy Display Player is installed. If it is missing, the Play Store page opens on the TV — press **Install** with the remote, and the tool continues by itself. Easy Display Player is the only app this tool can set as the kiosk.
 
 ### 4. Make Easy Display Kiosk
 
@@ -63,9 +55,7 @@ Click **Make Easy Display Kiosk**. The TV will then open Easy Display Player at 
 
 **Set up another TV** disconnects this device and returns to Prepare, so you can do the next TV in the same visit. **Turn off debugging** (on the All done screen) turns USB debugging off on that TV (`adb_enabled`, and Wireless debugging on Google TV) and disconnects this PC. Debugging is never turned off automatically. **Close** exits.
 
-If your shop Wi-Fi password is too long or awkward to type with the TV remote, use the **Recommended** travel-router child network (or the temporary-password fallback) described at the start of [Prepare the TV](#1-prepare-the-tv). The same diagram is shown here:
-
-![Recommended: travel router child network](docs/wifi-setup-diagram.png)
+For a complex shop password or a travel-router setup, see [Wi-Fi setup tips](#wi-fi-setup-tips) (in the wizard: **Wi-Fi tips (complex password?)**).
 
 **Move TV to shop Wi-Fi** is an optional button on the All done screen — it is never automatic. Enter the shop network name (SSID), the security type (WPA2, WPA3, or Open), and the password (masked, with a show-password toggle). You will be shown the name and password to check before anything is sent. On Android 11 or newer the tool saves the shop network on the TV (`cmd wifi add-network`) without removing the setup network, even if the shop Wi-Fi is out of range — the TV can join it later. The password is not saved on this PC and is not written to the log. If you are setting up several TVs, save the shop network on each one first and stay on the setup Wi-Fi until you have finished them all, then use **Set up another TV** — or use **Set up selected TVs** on the Connect step to do several in one go. If a TV does switch to the shop Wi-Fi straight away, this PC will lose that TV until you join the same shop Wi-Fi and use Find my TV — Kiosk Manager does not change this PC’s Wi-Fi for you. On Google TV / Chromecast, Wireless debugging usually turns off after a network change, so turn it back on (and pair again if asked) before you reconnect. If you also want to turn debugging off, press **Turn off debugging** only after this step, and only if you still want later access from this PC. If the TV is older than Android 11 or the command fails, the tool shows how to save the network in Settings (or from the hidden Kiosk menu: **TV Settings**). Leave the setup network saved if it is already there.
 
@@ -74,6 +64,18 @@ If your shop Wi-Fi password is too long or awkward to type with the TV remote, u
 On the Connect step, after **Find my TV**, tick the TVs you want and click **Set up selected TVs**. Kiosk Manager makes each selected TV an Easy Display Player kiosk, one after another. If a TV shows **Allow USB debugging?**, tick **Always allow from this computer** and press OK — that row will say **Waiting for Allow** until you do. Each row shows **Waiting**, **Installing**, **Done**, or **Failed** with a reason. A failure does not stop the others. **Retry failed** runs the same steps again only on the TVs that failed.
 
 You can also tick **Save shop Wi-Fi on all selected TVs** (same network name and password for all; you will be shown those details to check first) and **Turn off debugging on all selected TVs**. Shop Wi-Fi is saved without removing the setup network. Debugging is never turned off unless you choose that option. The ordinary one-TV path (select a single row, then the wizard steps) is unchanged.
+
+## Wi-Fi setup tips
+
+If your shop Wi-Fi password is too long or awkward to type with the TV remote, use one of these options. This is for setting TVs up in the shop — including several TVs in one visit. In the wizard, this page is opened from **Wi-Fi tips (complex password?)** on Prepare and on Move TV to shop Wi-Fi.
+
+**Recommended:** Add a child network with a second small router (a travel router) connected to your shop router, and give that child network a short, easy password. Join this PC and each TV to that simple setup Wi-Fi, then set up the kiosk on each TV. When a TV is ready, use **Move TV to shop Wi-Fi** (or **Set up selected TVs** for several at once) to save your shop network on it. The setup network stays saved too. The TV will join the shop Wi-Fi when that network is in range — often after you have finished the others. You do not need to type the shop password on the remote.
+
+**Fallback:** Temporarily set a simple password on the shop Wi-Fi itself while you set up the TVs. When you change the password back, every device on that Wi-Fi is disconnected, and each one — including every TV — must rejoin with the original password.
+
+![Recommended: travel router child network](docs/wifi-setup-diagram.png)
+
+The travel router joins the shop Wi-Fi. The TV stick and this PC join the travel router’s simple setup Wi-Fi. At the end, save the shop Wi-Fi on each TV (the setup network is left saved). Shop Wi-Fi sometimes blocks devices from finding each other, or shows a login page a TV cannot complete; a travel router avoids that, and Kiosk Manager can still find the TVs with Find my TV.
 
 ## Hidden Kiosk menu
 

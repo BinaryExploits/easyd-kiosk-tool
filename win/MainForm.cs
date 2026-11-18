@@ -78,11 +78,6 @@ public sealed partial class MainForm : Form
     // page 4: app
     private readonly Label _appStatus = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 13f), Margin = new Padding(0, 8, 0, 8) };
     private readonly Label _appHint = Ui.Text("", 640, Ui.Muted);
-    private readonly Panel _advanced = new() { Width = 660, Height = 300, Visible = false };
-    private readonly TextBox _filter = new() { Width = 260, PlaceholderText = "Filter by name or package" };
-    private readonly CheckBox _showSystem = new() { Text = "Show system apps", AutoSize = true };
-    private readonly ListView _apps = new() { View = View.Details, FullRowSelect = true, MultiSelect = false, HideSelection = false, Width = 640, Height = 220 };
-    private List<AppEntry> _appList = new();
     // page 5: kiosk
     private readonly Label _targetInfo = new() { AutoSize = true, Font = new Font("Segoe UI Semibold", 11f), Margin = new Padding(0, 4, 0, 8) };
     private readonly CheckedListBox _homes = new() { Width = 640, Height = 90, CheckOnClick = true, IntegralHeight = false };
@@ -179,6 +174,7 @@ public sealed partial class MainForm : Form
         _pages.Add(PageKiosk());
         _pages.Add(PageDone());
         _pages.Add(PageReset());
+        _pages.Add(PageWifiTips());
         foreach (var pg in _pages) _content.Controls.Add(pg);
     }
 
@@ -186,8 +182,8 @@ public sealed partial class MainForm : Form
     {
         var p = Ui.Page();
         p.Controls.Add(Ui.Heading("Prepare the TV"));
-        p.Controls.Add(BuildShopWifiIntro(includeDiagram: true));
-        p.Controls.Add(Ui.Text("Then do this once on each TV with the remote. Keep the TV on, and keep this PC on the same Wi-Fi as the TV (the simple setup network if you are using a travel router)."));
+        p.Controls.Add(Ui.Text("Do this once on each TV with the remote. Keep the TV on, and keep this PC on the same Wi-Fi as the TV."));
+        p.Controls.Add(WifiTipsLink());
         _prepTabs.TabPages.Add(InstrTab("Android TV  (Xiaomi Mi TV Stick 4K, most TV boxes)",
             "1.  Open Settings  ›  Device Preferences  ›  About.\r\n" +
             "2.  Scroll to “Android TV OS build” (on some devices it’s just called “Build”) and press OK on it 7 times, until it says “You are now a developer”.\r\n" +
@@ -315,7 +311,7 @@ public sealed partial class MainForm : Form
     {
         var p = Ui.Page();
         p.Controls.Add(Ui.Heading("Easy Display Player"));
-        p.Controls.Add(Ui.Text($"The kiosk will open {KioskOps.DefaultTargetName} ({KioskOps.DefaultTarget}) every time the TV starts or Home is pressed.", 640, Ui.Muted));
+        p.Controls.Add(Ui.Text($"The kiosk opens {KioskOps.DefaultTargetName} ({KioskOps.DefaultTarget}) every time the TV starts or Home is pressed. That is the only app this tool sets as the kiosk.", 640, Ui.Muted));
         p.Controls.Add(_appStatus);
         p.Controls.Add(_appHint);
         var again = Ui.Secondary("Open Play Store on the TV again");
@@ -324,45 +320,6 @@ public sealed partial class MainForm : Form
         check.Click += async (_, _) => await CheckTargetAsync(autoAdvance: true, _pageCts.Token);
         _actionControls.Add(again); _actionControls.Add(check);
         p.Controls.Add(Ui.Row(check, again));
-
-        var adv = new LinkLabel { Text = "Advanced: choose a different app", AutoSize = true, Margin = new Padding(0, 18, 0, 4) };
-        adv.LinkClicked += async (_, _) =>
-        {
-            _advanced.Visible = !_advanced.Visible;
-            if (_advanced.Visible && _appList.Count == 0 && _serial != null) await LoadAppsAsync();
-        };
-        p.Controls.Add(adv);
-
-        _apps.Columns.Add("App", 260);
-        _apps.Columns.Add("Package", 360);
-        _apps.SelectedIndexChanged += (_, _) => { };
-        var useApp = Ui.Primary("Use selected app");
-        var useDefault = Ui.Secondary("Back to Easy Display Player");
-        var reload = Ui.Secondary("Reload list");
-        useApp.Click += async (_, _) =>
-        {
-            if (_apps.SelectedItems.Count == 0) { MessageBox.Show(this, "Select an app in the list first.", Text); return; }
-            var a = (AppEntry)_apps.SelectedItems[0].Tag;
-            _target = a.Package; _targetLabel = a.Label;
-            Log($"Target app set to {a.Label} ({a.Package}).");
-            await CheckTargetAsync(autoAdvance: false, _pageCts.Token);
-        };
-        useDefault.Click += async (_, _) =>
-        {
-            _target = KioskOps.DefaultTarget; _targetLabel = KioskOps.DefaultTargetName;
-            await CheckTargetAsync(autoAdvance: false, _pageCts.Token);
-        };
-        reload.Click += async (_, _) => await LoadAppsAsync();
-        _actionControls.Add(useApp); _actionControls.Add(useDefault); _actionControls.Add(reload);
-        _filter.TextChanged += (_, _) => FillApps();
-        _showSystem.CheckedChanged += (_, _) => FillApps();
-        var advFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        advFlow.Controls.Add(Ui.Row(_filter, _showSystem));
-        advFlow.Controls.Add(_apps);
-        advFlow.Controls.Add(Ui.Row(useApp, useDefault, reload));
-        _advanced.Height = 320;
-        _advanced.Controls.Add(advFlow);
-        p.Controls.Add(_advanced);
         return p;
     }
 
@@ -420,7 +377,7 @@ public sealed partial class MainForm : Form
     // ───────────────────────────── navigation ─────────────────────────────
     private bool CanEnter(int idx)
     {
-        if (idx == ResetPage || idx <= 1) return true;
+        if (idx == ResetPage || idx == WifiTipsPage || idx <= 1) return true;
         if (_serial == null) { Status("Connect to the TV first."); return false; }
         if (idx == 3 && !_targetReady) { Status("The kiosk app is not installed on the TV yet."); return false; }
         return true;
@@ -434,11 +391,11 @@ public sealed partial class MainForm : Form
         for (int i = 0; i < _pages.Count; i++) _pages[i].Visible = i == idx;
         RefreshNav();
         bool onDone = idx == DonePage;
-        bool onReset = idx == ResetPage;
-        _back.Visible = idx > 0 && !onDone && !onReset;
-        _next.Visible = idx < 3 && !onReset; // hide on Make Easy Display Kiosk, done, and reset options
-        if (_footer != null) _footer.Visible = !onDone && !onReset;
-        if (!onDone && !onReset) StartPageWork(idx);
+        bool onExtra = idx == ResetPage || idx == WifiTipsPage;
+        _back.Visible = idx > 0 && !onDone && !onExtra;
+        _next.Visible = idx < 3 && !onExtra; // hide on Make Easy Display Kiosk, done, and extra pages
+        if (_footer != null) _footer.Visible = !onDone && !onExtra;
+        if (!onDone && !onExtra) StartPageWork(idx);
     }
 
     private void RefreshNav()
@@ -446,7 +403,7 @@ public sealed partial class MainForm : Form
         bool done = _page == DonePage;
         for (int i = 0; i < _navItems.Count; i++)
         {
-            bool cur = !done && _page != ResetPage && i == _page;
+            bool cur = !done && _page != ResetPage && _page != WifiTipsPage && i == _page;
             _navItems[i].Text = done
                 ? "✔  " + System.Text.RegularExpressions.Regex.Replace(NavTitles[i], @"^\d+\s+", "")
                 : NavTitles[i];
@@ -740,7 +697,6 @@ public sealed partial class MainForm : Form
             _serial = serial;
             _deviceModel = model;
             _deviceAndroid = rel;
-            _appList.Clear();
             _lblDevice.Text = $"📺  {model}  ·  Android {rel}  ·  {serial}";
             Log($"Connected: {model}, Android {rel} (SDK {sdk}), serial {serial}");
             _connResult.ForeColor = Ui.Good;
@@ -761,8 +717,9 @@ public sealed partial class MainForm : Form
     private async Task CheckTargetAsync(bool autoAdvance, CancellationToken ct)
     {
         if (_serial == null) return;
+        _target = KioskOps.DefaultTarget;
+        _targetLabel = KioskOps.DefaultTargetName;
         bool openedStore = false;
-        bool isDefault = _target == KioskOps.DefaultTarget;
         _appStatus.ForeColor = Color.FromArgb(33, 33, 33);
         _appStatus.Text = $"Checking for {_targetLabel}...";
         _appHint.Text = "";
@@ -788,14 +745,8 @@ public sealed partial class MainForm : Form
                 if (autoAdvance && _page == 2)
                 {
                     await Task.Delay(1200);
-                    if (_page == 2 && !_advanced.Visible) ShowPage(3);
+                    if (_page == 2) ShowPage(3);
                 }
-                return;
-            }
-            if (!isDefault)
-            {
-                _appStatus.ForeColor = Ui.Bad;
-                _appStatus.Text = $"✖ {_target} is not installed on the TV.";
                 return;
             }
             if (!openedStore)
@@ -835,36 +786,6 @@ public sealed partial class MainForm : Form
     private Task<AdbResult> _ops_StartStore()
         => _adb.ShellAsync(_serial, $"am start -a android.intent.action.VIEW -d market://details?id={KioskOps.DefaultTarget}");
 
-    private async Task LoadAppsAsync()
-    {
-        if (_serial == null) return;
-        SetBusy(true, "Reading the apps installed on the TV...");
-        try
-        {
-            _appList = await _ops.ListAppsAsync(_serial);
-            Log($"{_appList.Count} launchable apps found.");
-            FillApps();
-            Status("Pick the app the kiosk should open.");
-        }
-        finally { SetBusy(false); }
-    }
-
-    private void FillApps()
-    {
-        var f = _filter.Text.Trim();
-        _apps.BeginUpdate();
-        _apps.Items.Clear();
-        foreach (var a in _appList)
-        {
-            if (a.System && !_showSystem.Checked && !a.Package.Contains("easyd", StringComparison.OrdinalIgnoreCase)) continue;
-            if (f.Length > 0 && !a.Label.Contains(f, StringComparison.OrdinalIgnoreCase) && !a.Package.Contains(f, StringComparison.OrdinalIgnoreCase)) continue;
-            var it = new ListViewItem(new[] { a.Label, a.Package }) { Tag = a };
-            _apps.Items.Add(it);
-            bool match = a.Package == _target || (_target == KioskOps.DefaultTarget && (a.Package.Contains("easyd", StringComparison.OrdinalIgnoreCase) || a.Label.Contains("easyd", StringComparison.OrdinalIgnoreCase)));
-            if (match && _apps.SelectedItems.Count == 0) { it.Selected = true; it.EnsureVisible(); }
-        }
-        _apps.EndUpdate();
-    }
 
     private async Task PrepareKioskPageAsync()
     {
@@ -1078,9 +999,6 @@ public sealed partial class MainForm : Form
         _devices.Items.Clear();
         _appStatus.Text = "";
         _appHint.Text = "";
-        _advanced.Visible = false;
-        _appList.Clear();
-        _apps.Items.Clear();
         _homes.Items.Clear();
         _steps.Items.Clear();
         _kioskResult.Text = "";
