@@ -16,6 +16,9 @@ public sealed partial class MainForm
         public Panel Row;
         public Label Info;
         public Button IdentifyBtn;
+        public CheckBox Pick;
+        public Label BatchStatus;
+        public string LastBatchError;
     }
 
     private readonly List<TvHit> _tvHits = new();
@@ -34,6 +37,8 @@ public sealed partial class MainForm
         await UninstallAllTempIdentifyAsync();
         _foundTvs.Controls.Clear();
         _tvHits.Clear();
+        if (_batchPanel != null) _batchPanel.Visible = false;
+        if (_batchSummary != null) _batchSummary.Text = "";
         _identifyBanner.Visible = false;
         _scanStatus.ForeColor = Ui.Muted;
         _scanStatus.Text = "Scanning this Wi‑Fi for TVs…";
@@ -87,7 +92,8 @@ public sealed partial class MainForm
             _scanStatus.Text = waiting > 0
                 ? $"Found {endpoints.Count}. {waiting} waiting for you to allow USB debugging on the TV."
                 : $"Found {endpoints.Count} TV(s)" + (ready > 0 ? $", {ready} ready to connect." : ".");
-            Status("Select a TV, or type an IP below.");
+            ShowBatchPanelIfNeeded();
+            Status("Select a TV, tick several to set up at once, or type an IP below.");
         }
         catch (Exception ex)
         {
@@ -102,35 +108,47 @@ public sealed partial class MainForm
     {
         var row = new Panel
         {
-            Width = 640, Height = 56, Margin = new Padding(0, 2, 0, 2),
+            Width = 640, Height = 74, Margin = new Padding(0, 2, 0, 2),
             BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(248, 250, 253),
             Cursor = Cursors.Hand
         };
+        var pick = new CheckBox { Left = 8, Top = 16, Width = 20, Height = 20, Cursor = Cursors.Default };
         var info = new Label
         {
-            AutoSize = false, Width = 500, Height = 52, Left = 8, Top = 2,
+            AutoSize = false, Width = 470, Height = 36, Left = 32, Top = 2,
             Font = new Font("Segoe UI", 9.5f), ForeColor = Color.FromArgb(33, 33, 33),
             Text = hit.Endpoint.Address + "  ·  reading…",
             Cursor = Cursors.Hand
         };
+        var status = new Label
+        {
+            AutoSize = false, Width = 470, Height = 22, Left = 32, Top = 40,
+            Font = new Font("Segoe UI", 8.5f), ForeColor = Ui.Muted,
+            Text = "", Cursor = Cursors.Hand
+        };
         var idBtn = Ui.Secondary("Identify");
         idBtn.Margin = new Padding(0);
         idBtn.Left = 515;
-        idBtn.Top = 8;
+        idBtn.Top = 16;
         idBtn.Enabled = false;
         idBtn.Click += async (_, _) => await IdentifyHitAsync(hit);
         void use(object s, EventArgs e)
         {
-            if (s == idBtn) return;
+            if (s == idBtn || s == pick) return;
             _ = UseHitAsync(hit);
         }
         row.Click += use;
         info.Click += use;
+        status.Click += use;
+        row.Controls.Add(pick);
         row.Controls.Add(info);
+        row.Controls.Add(status);
         row.Controls.Add(idBtn);
         hit.Row = row;
         hit.Info = info;
         hit.IdentifyBtn = idBtn;
+        hit.Pick = pick;
+        hit.BatchStatus = status;
         _actionControls.Add(idBtn);
     }
 

@@ -152,6 +152,64 @@ public sealed class Adb
     public Task<AdbResult> ShellAsync(string serial, string cmd, bool quiet = false, int timeoutMs = 60000)
         => RunAsync(timeoutMs, quiet, "-s", serial, "shell", cmd);
 
+    /// <summary>
+    /// Runs one device-shell command via stdin so secrets are not on the adb command line.
+    /// <paramref name="logCommand"/> is what is written to the log (already redacted). Output is not logged.
+    /// </summary>
+    public async Task<AdbResult> ShellStdinAsync(string serial, string command, string logCommand, int timeoutMs = 25000)
+    {
+        _log("> adb -s " + serial + " shell  << " + (logCommand ?? "(command)"));
+        var psi = new ProcessStartInfo(AdbPath)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            RedirectStandardInput = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+            StandardInputEncoding = Encoding.UTF8,
+        };
+        psi.ArgumentList.Add("-s");
+        psi.ArgumentList.Add(serial);
+        psi.ArgumentList.Add("shell");
+        psi.Environment["ADB_MDNS_OPENSCREEN"] = "1";
+
+        var r = new AdbResult();
+        var so = new StringBuilder();
+        var se = new StringBuilder();
+        var outDone = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var errDone = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var exited = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
+        p.OutputDataReceived += (_, e) => { if (e.Data == null) outDone.TrySetResult(true); else lock (so) so.AppendLine(e.Data); };
+        p.ErrorDataReceived += (_, e) => { if (e.Data == null) errDone.TrySetResult(true); else lock (se) se.AppendLine(e.Data); };
+        p.Exited += (_, _) => exited.TrySetResult(true);
+        try { p.Start(); }
+        catch (Exception ex) { r.ExitCode = -1; r.Err = ex.Message; _log("  ! " + ex.Message); return r; }
+        try
+        {
+            await p.StandardInput.WriteAsync(command ?? "");
+            if (command == null || !command.EndsWith("\n")) await p.StandardInput.WriteAsync("\n");
+            p.StandardInput.Close();
+        }
+        catch { try { p.StandardInput.Close(); } catch { } }
+        p.BeginOutputReadLine();
+        p.BeginErrorReadLine();
+
+        if (await Task.WhenAny(exited.Task, Task.Delay(timeoutMs)) != exited.Task)
+        {
+            r.TimedOut = true;
+            try { p.Kill(true); } catch { }
+        }
+        await Task.WhenAny(Task.WhenAll(outDone.Task, errDone.Task), Task.Delay(1500));
+        try { r.ExitCode = r.TimedOut ? -1 : p.ExitCode; } catch { r.ExitCode = -1; }
+        lock (so) r.Out = so.ToString();
+        lock (se) r.Err = se.ToString();
+        if (r.TimedOut) _log("  ! timed out");
+        return r;
+    }
+
     private static readonly Regex MdnsLine = new(
         @"^(?<name>\S+)\s+_adb-tls-(?<type>pairing|connect)\._tcp\.?\s+(?<addr>\d{1,3}(?:\.\d{1,3}){3}:\d+)",
         RegexOptions.Multiline);

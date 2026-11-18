@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">Recommended: travel router child network</title>
+  <desc id="desc">The travel router joins the shop Wi-Fi. The TV stick and this PC join the travel router’s simple setup Wi-Fi. At the end, move the TV to the shop Wi-Fi.</desc>
+  <defs>
+    <marker id="arrowSolid" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#506078"/>
+    </marker>
+    <marker id="arrowDash" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#c05600"/>
+    </marker>
+  </defs>
+  <rect width="1280" height="640" fill="#f7f9fc"/>
+  <text x="640.0" y="48" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#0d47a1">Recommended: travel router child network</text>
+
+  <g>
+    <rect x="80" y="130" width="200" height="96" rx="16" ry="16" fill="#ffffff" stroke="#b4becc" stroke-width="2"/>
+    <path d="M96,130 H264 Q280,130 280,146 V142 H80 V146 Q80,130 96,130 Z" fill="#37474f"/>
+    <text x="180.0" y="185.68" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#1a2028">Internet</text>
+  </g>
+
+  <g>
+    <rect x="390" y="118" width="250" height="120" rx="16" ry="16" fill="#ffffff" stroke="#b4becc" stroke-width="2"/>
+    <path d="M406,118 H624 Q640,118 640,134 V130 H390 V134 Q390,118 406,118 Z" fill="#1b3a5f"/>
+    <text x="515.0" y="173.2" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#1a2028">Shop router</text>
+    <text x="515.0" y="204.39999999999998" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="16" fill="#3d4a5c">Complex password</text>
+  </g>
+
+  <g>
+    <rect x="770" y="118" width="270" height="120" rx="16" ry="16" fill="#ffffff" stroke="#b4becc" stroke-width="2"/>
+    <path d="M786,118 H1024 Q1040,118 1040,134 V130 H770 V134 Q770,118 786,118 Z" fill="#0d47a1"/>
+    <text x="905.0" y="173.2" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#1a2028">Travel router</text>
+    <text x="905.0" y="204.39999999999998" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="16" fill="#3d4a5c">Simple setup Wi-Fi</text>
+  </g>
+
+  <g>
+    <rect x="700" y="360" width="210" height="100" rx="16" ry="16" fill="#ffffff" stroke="#b4becc" stroke-width="2"/>
+    <path d="M716,360 H894 Q910,360 910,376 V372 H700 V376 Q700,360 716,360 Z" fill="#1565c0"/>
+    <text x="805.0" y="418.0" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#1a2028">TV stick</text>
+  </g>
+
+  <g>
+    <rect x="960" y="350" width="250" height="120" rx="16" ry="16" fill="#ffffff" stroke="#b4becc" stroke-width="2"/>
+    <path d="M976,350 H1194 Q1210,350 1210,366 V362 H960 V366 Q960,350 976,350 Z" fill="#1565c0"/>
+    <text x="1085.0" y="405.2" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#1a2028">Windows PC</text>
+    <text x="1085.0" y="436.4" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="16" fill="#3d4a5c">running Kiosk Manager</text>
+  </g>
+  <line x1="280" y1="178.0" x2="388" y2="178.0" stroke="#506078" stroke-width="4" marker-end="url(#arrowSolid)"/>
+  <line x1="640" y1="178.0" x2="768" y2="178.0" stroke="#506078" stroke-width="4" marker-end="url(#arrowSolid)"/>
+  <line x1="905.0" y1="238" x2="905.0" y2="300" stroke="#506078" stroke-width="4"/>
+  <line x1="805.0" y1="300" x2="1085.0" y2="300" stroke="#506078" stroke-width="4"/>
+  <line x1="805.0" y1="300" x2="805.0" y2="358" stroke="#506078" stroke-width="4" marker-end="url(#arrowSolid)"/>
+  <line x1="1085.0" y1="300" x2="1085.0" y2="348" stroke="#506078" stroke-width="4" marker-end="url(#arrowSolid)"/>
+  <path d="M 698 410.0 H 515.0 V 256" fill="none" stroke="#c05600" stroke-width="4" stroke-dasharray="14 10" marker-end="url(#arrowDash)"/>
+  <rect x="357.5" y="366.0" width="500" height="32" rx="8" fill="#fff3e0" stroke="#c05600" stroke-width="2"/>
+  <text x="607.5" y="387.0" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="#c05600">At the end: Move TV to shop Wi-Fi</text>
+  <text x="640.0" y="560" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="15" fill="#3d4a5c">The travel router joins the shop Wi-Fi. The TV stick and this PC join the travel router’s simple setup Wi-Fi.</text>
+  <text x="640.0" y="582" text-anchor="middle" font-family="DejaVu Sans, Segoe UI, Arial, sans-serif" font-size="15" fill="#3d4a5c">At the end, move the TV to the shop Wi-Fi.</text>
+</svg>
