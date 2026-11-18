@@ -23,19 +23,27 @@ A prebuilt exe is in [`release/KioskManager.exe`](release/KioskManager.exe) and 
 
 ## Using it
 
-1. On the TV turn on Developer options and Wireless debugging:
-   - **Android TV (Xiaomi):** Settings › Device Preferences › About › press **Android TV OS build** 7 times
-     (on some devices it's just called **Build**), then Device Preferences › Developer options › **Wireless debugging**.
+1. On the TV turn on Developer options:
+   - **Android TV (Xiaomi Mi TV Stick 4K and most boxes):** Settings › Device Preferences › About › press
+     **Android TV OS build** 7 times (on some devices it's just called **Build**), then Device Preferences ›
+     Developer options › **USB debugging**. Note the TV's IP address under Settings › Network & Internet ›
+     your Wi-Fi network. Many Xiaomi sticks have no **Wireless debugging** entry; USB debugging is enough.
+     When the TV shows **Allow USB debugging?**, tick **Always allow from this computer** and press OK.
    - **Google TV (Chromecast):** Settings › System › About › press **Android TV OS build** 7 times
      (on some devices it's just called **Build**), then System › Developer options › **Wireless debugging**.
-   - In Wireless debugging choose **Pair device with pairing code** and keep that screen open.
-2. On a Windows PC on the same Wi-Fi, run `KioskManager.exe` and follow the 5 steps:
-   **Prepare → Pair** (auto-discovers the TV over mDNS; type the 6-digit code) **→ Connect → EasyD Player**
-   (if it's missing, its Play Store page opens on the TV; press Install and the tool continues by itself)
-   **→ Make kiosk**.
-3. To undo, run the tool again and click **Restore original** on step 5.
+     In Wireless debugging choose **Pair device with pairing code** and keep that screen open.
+2. On a Windows PC on the same Wi-Fi, run `KioskManager.exe` and follow the 4 steps:
+   **Prepare → Connect → EasyD Player** (if it's missing, its Play Store page opens on the TV; press Install
+   and the tool continues by itself) **→ Make kiosk**.
+   On Connect, choose how to reach the TV (the default follows the menu type you picked in Prepare):
+   - **Xiaomi / Android TV: Connect by IP (USB debugging)** — type the TV's IP (port 5555 is used if you
+     don't add a port) and click Connect. The tool waits up to about a minute for you to allow debugging
+     on the TV.
+   - **Google TV / Chromecast: Pair with code (Wireless debugging)** — auto-discovers the TV over mDNS;
+     type the 6-digit pairing code, then Connect.
+3. To undo, run the tool again and click **Restore original** on the last step.
 
-"Advanced: choose a different app" on step 4 lets you pick any launchable app instead of EasyD Player.
+"Advanced: choose a different app" on the EasyD Player step lets you pick any launchable app instead of EasyD Player.
 
 ### What "Make kiosk" does (in order)
 
@@ -116,7 +124,7 @@ If platform-tools is not embedded, the exe downloads it from Google on first run
 - The Windows UI has not been visually checked on Windows (built on Linux).
 - Hold-OK escape and the 2-second splash timing were not testable on the slow emulator.
 - Google TV specifics (`launcherx` / `setupwraith`) follow a manual run on a Chromecast, not an automated test.
-- Requires Android 11+ (Wireless debugging). The original Mi TV Stick (Android 9) is not supported.
+- Requires Android 11+. Xiaomi Mi TV Stick 4K (Android 11) is connected by IP on port 5555 after turning on USB debugging (it has no Wireless debugging). Google TV uses Wireless debugging and a pairing code. The original Mi TV Stick (Android 9) is not supported.
 - Unsigned exe: SmartScreen warning expected. Windows Firewall may ask about adb (allow on Private networks for auto-discovery).
 
 ## License

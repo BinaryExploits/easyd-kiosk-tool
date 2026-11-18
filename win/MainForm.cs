@@ -34,10 +34,25 @@ public sealed class MainForm : Form
     private readonly TextBox _pairAddr = new() { Width = 220, PlaceholderText = "192.168.1.43:37123" };
     private readonly TextBox _pairCode = new() { Width = 120, MaxLength = 6, PlaceholderText = "123456", Font = new Font("Segoe UI", 12f) };
     private readonly Label _pairResult = Ui.Text("");
-    // page 3: connect
+    // page 2: connect (IP or pairing)
+    private readonly TabControl _prepTabs = new() { Width = 660, Height = 300, Margin = new Padding(0, 10, 0, 6) };
+    private readonly RadioButton _modeIp = new()
+    {
+        Text = "Xiaomi / Android TV: Connect by IP (USB debugging)",
+        AutoSize = true, Checked = true, Margin = new Padding(0, 8, 0, 2)
+    };
+    private readonly RadioButton _modePair = new()
+    {
+        Text = "Google TV / Chromecast: Pair with code (Wireless debugging)",
+        AutoSize = true, Margin = new Padding(0, 2, 0, 10)
+    };
+    private readonly FlowLayoutPanel _ipPanel = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0) };
+    private readonly FlowLayoutPanel _pairPanel = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0) };
+    private readonly TextBox _ipAddr = new() { Width = 220, PlaceholderText = "192.168.1.43" };
     private readonly TextBox _connAddr = new() { Width = 220, PlaceholderText = "192.168.1.43:41234" };
     private readonly ComboBox _devices = new() { Width = 300, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly Label _connResult = Ui.Text("");
+    private bool _connectModePicked;
     // page 4: app
     private readonly Label _appStatus = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 13f), Margin = new Padding(0, 8, 0, 8) };
     private readonly Label _appHint = Ui.Text("", 640, Ui.Muted);
@@ -52,7 +67,7 @@ public sealed class MainForm : Form
     private readonly ListView _steps = new() { View = View.Details, Width = 640, Height = 190, FullRowSelect = true, HeaderStyle = ColumnHeaderStyle.Nonclickable };
     private readonly Label _kioskResult = new() { AutoSize = true, MaximumSize = new Size(640, 0), Font = new Font("Segoe UI Semibold", 11f), Margin = new Padding(0, 6, 0, 0) };
 
-    private static readonly string[] NavTitles = { "1  Prepare the TV", "2  Pair", "3  Connect", "4  EasyD Player", "5  Make kiosk" };
+    private static readonly string[] NavTitles = { "1  Prepare the TV", "2  Connect", "3  EasyD Player", "4  Make kiosk" };
 
     public MainForm()
     {
@@ -128,7 +143,6 @@ public sealed class MainForm : Form
     private void BuildPages()
     {
         _pages.Add(PagePrepare());
-        _pages.Add(PagePair());
         _pages.Add(PageConnect());
         _pages.Add(PageApp());
         _pages.Add(PageKiosk());
@@ -140,21 +154,26 @@ public sealed class MainForm : Form
         var p = Ui.Page();
         p.Controls.Add(Ui.Heading("Prepare the TV"));
         p.Controls.Add(Ui.Text("Do this once on the TV with the remote. Keep the TV on and this PC on the same Wi‑Fi network as the TV."));
-        var tabs = new TabControl { Width = 660, Height = 300, Margin = new Padding(0, 10, 0, 6) };
-        tabs.TabPages.Add(InstrTab("Android TV  (Xiaomi Mi TV Stick 4K, most TV boxes)",
+        _prepTabs.TabPages.Add(InstrTab("Android TV  (Xiaomi Mi TV Stick 4K, most TV boxes)",
             "1.  Open Settings  ›  Device Preferences  ›  About.\r\n" +
             "2.  Scroll to “Android TV OS build” (on some devices it’s just called “Build”) and press OK on it 7 times, until it says “You are now a developer”.\r\n" +
             "3.  Go back to Settings  ›  Device Preferences  ›  Developer options.\r\n" +
-            "4.  Turn on “USB debugging”, then open “Wireless debugging” and turn it on (choose “Always allow on this network” if asked).\r\n" +
-            "5.  Inside Wireless debugging choose “Pair device with pairing code”. Leave that screen open and click Next here.\r\n\r\n" +
-            "Needs Android TV 11 or newer. The older Mi TV Stick (Android 9) has no Wireless debugging."));
-        tabs.TabPages.Add(InstrTab("Google TV  (Chromecast with Google TV, Google TV Streamer)",
+            "4.  Turn on “USB debugging”. Many Xiaomi sticks have no “Wireless debugging” entry — USB debugging is enough.\r\n" +
+            "5.  Find the TV’s IP address under Settings  ›  Network & Internet  ›  your Wi‑Fi network. Click Next here and type that IP.\r\n\r\n" +
+            "When the TV shows “Allow USB debugging?”, tick “Always allow from this computer” and press OK.\r\n" +
+            "Needs Android TV 11 or newer. The older Mi TV Stick (Android 9) is not supported."));
+        _prepTabs.TabPages.Add(InstrTab("Google TV  (Chromecast with Google TV, Google TV Streamer)",
             "1.  Open Settings  ›  System  ›  About.\r\n" +
             "2.  Scroll to “Android TV OS build” (on some devices it’s just called “Build”) and press OK on it 7 times (enter your PIN if asked) until it says “You are now a developer”.\r\n" +
             "3.  Go back to Settings  ›  System  ›  Developer options.\r\n" +
             "4.  Turn on “USB debugging”, then open “Wireless debugging” and turn it on.\r\n" +
             "5.  Inside Wireless debugging choose “Pair device with pairing code”. Leave that screen open and click Next here."));
-        p.Controls.Add(tabs);
+        _prepTabs.SelectedIndexChanged += (_, _) =>
+        {
+            _connectModePicked = false;
+            ApplyConnectModeFromPrepare();
+        };
+        p.Controls.Add(_prepTabs);
         p.Controls.Add(Ui.Text("Tip: if Windows Firewall asks about “adb”, click Allow (Private networks) so the TV can be found automatically.", 640, Ui.Muted));
         return p;
     }
@@ -166,15 +185,34 @@ public sealed class MainForm : Form
         return t;
     }
 
-    private Control PagePair()
+    private Control PageConnect()
     {
         var p = Ui.Page();
-        p.Controls.Add(Ui.Heading("Pair this PC with the TV"));
-        p.Controls.Add(Ui.Text("On the TV: Developer options › Wireless debugging › “Pair device with pairing code”. The TV shows a 6‑digit code and an IP address:port. Keep that screen open."));
+        p.Controls.Add(Ui.Heading("Connect to the TV"));
+        p.Controls.Add(Ui.Text("Choose how this PC should reach the TV. The default follows the menu type you picked in Prepare.", 640, Ui.Muted));
+        _modeIp.Click += (_, _) => { _connectModePicked = true; ShowConnectMode(); };
+        _modePair.Click += (_, _) => { _connectModePicked = true; ShowConnectMode(); };
+        _modeIp.CheckedChanged += (_, _) => { if (_modeIp.Checked) ShowConnectMode(); };
+        _modePair.CheckedChanged += (_, _) => { if (_modePair.Checked) ShowConnectMode(); };
+        p.Controls.Add(_modeIp);
+        p.Controls.Add(_modePair);
+
+        _ipPanel.Controls.Add(Ui.Text(
+            "On the TV, turn on Developer options (Settings › Device Preferences › About, then press “Android TV OS build” — or “Build” — 7 times) and turn on USB debugging. " +
+            "Find the IP address under Settings › Network & Internet › your Wi‑Fi network. Type that IP below (port 5555 is used if you don’t add a port). " +
+            "When the TV shows “Allow USB debugging?”, tick “Always allow from this computer” and press OK.",
+            640, Ui.Muted));
+        var ipConn = Ui.Primary("Connect");
+        ipConn.Click += async (_, _) => await ConnectByIpAsync();
+        _ipAddr.KeyDown += async (_, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; await ConnectByIpAsync(); } };
+        _actionControls.Add(ipConn);
+        _ipPanel.Controls.Add(Ui.Row(Ui.Text("TV IP address"), _ipAddr, ipConn));
+
+        _pairPanel.Controls.Add(Ui.Text("On the TV: Developer options › Wireless debugging › “Pair device with pairing code”. The TV shows a 6‑digit code and an IP address:port. Keep that screen open."));
         var scan = Ui.Secondary("🔍  Search for the TV");
         scan.Click += async (_, _) => await ScanAsync(forPairing: true, _pageCts.Token);
         _actionControls.Add(scan);
-        p.Controls.Add(Ui.Row(scan, Ui.Text("Found on the network:", 300, Ui.Muted)));
+        _pairPanel.Controls.Add(Ui.Row(scan, Ui.Text("Found on the network:", 300, Ui.Muted)));
         _found.SelectedIndexChanged += (_, _) =>
         {
             if (_found.SelectedItem is MdnsService s)
@@ -182,31 +220,24 @@ public sealed class MainForm : Form
                 if (s.Type == "pairing") _pairAddr.Text = s.Address; else _connAddr.Text = s.Address;
             }
         };
-        p.Controls.Add(_found);
-        p.Controls.Add(Ui.Row(Ui.Text("Pairing IP address:port"), _pairAddr));
+        _pairPanel.Controls.Add(_found);
+        _pairPanel.Controls.Add(Ui.Row(Ui.Text("Pairing IP address:port"), _pairAddr));
         var pair = Ui.Primary("Pair");
         pair.Click += async (_, _) => await PairAsync();
         _actionControls.Add(pair);
         _pairCode.KeyDown += async (_, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; await PairAsync(); } };
-        p.Controls.Add(Ui.Row(Ui.Text("Pairing code"), _pairCode, pair));
-        p.Controls.Add(_pairResult);
-        var skip = new LinkLabel { Text = "This PC is already paired with the TV — skip to Connect", AutoSize = true, Margin = new Padding(0, 14, 0, 0) };
-        skip.LinkClicked += (_, _) => ShowPage(2);
-        p.Controls.Add(skip);
-        return p;
-    }
-
-    private Control PageConnect()
-    {
-        var p = Ui.Page();
-        p.Controls.Add(Ui.Heading("Connect to the TV"));
-        p.Controls.Add(Ui.Text("Usually this is filled in automatically. If not, type the IP address:port shown at the top of the TV's Wireless debugging screen (it is different from the pairing port)."));
+        _pairPanel.Controls.Add(Ui.Row(Ui.Text("Pairing code"), _pairCode, pair));
+        _pairPanel.Controls.Add(_pairResult);
+        _pairPanel.Controls.Add(Ui.Text("After pairing, the connect port is usually filled in automatically. If not, type the IP address:port shown at the top of the TV's Wireless debugging screen (it is different from the pairing port).", 640, Ui.Muted));
         var find = Ui.Secondary("🔍  Find automatically");
         find.Click += async (_, _) => await ScanAsync(forPairing: false, _pageCts.Token);
         var conn = Ui.Primary("Connect");
-        conn.Click += async (_, _) => await ConnectAsync();
+        conn.Click += async (_, _) => await ConnectWirelessAsync();
         _actionControls.Add(find); _actionControls.Add(conn);
-        p.Controls.Add(Ui.Row(Ui.Text("TV address (IP:port)"), _connAddr, conn, find));
+        _pairPanel.Controls.Add(Ui.Row(Ui.Text("TV address (IP:port)"), _connAddr, conn, find));
+
+        p.Controls.Add(_ipPanel);
+        p.Controls.Add(_pairPanel);
         p.Controls.Add(_connResult);
         p.Controls.Add(Ui.Text("Already connected devices (for example over USB):", 640, Ui.Muted));
         var refresh = Ui.Secondary("Refresh");
@@ -215,7 +246,24 @@ public sealed class MainForm : Form
         use.Click += async (_, _) => { if (_devices.SelectedItem is string s) await UseDeviceAsync(s); };
         _actionControls.Add(refresh); _actionControls.Add(use);
         p.Controls.Add(Ui.Row(_devices, use, refresh));
+        ApplyConnectModeFromPrepare();
         return p;
+    }
+
+    private void ApplyConnectModeFromPrepare()
+    {
+        if (_connectModePicked) { ShowConnectMode(); return; }
+        bool ip = _prepTabs.TabPages.Count == 0 || _prepTabs.SelectedIndex <= 0;
+        _modeIp.Checked = ip;
+        _modePair.Checked = !ip;
+        ShowConnectMode();
+    }
+
+    private void ShowConnectMode()
+    {
+        bool ip = _modeIp.Checked;
+        _ipPanel.Visible = ip;
+        _pairPanel.Visible = !ip;
     }
 
     private Control PageApp()
@@ -300,9 +348,9 @@ public sealed class MainForm : Form
     // ───────────────────────────── navigation ─────────────────────────────
     private bool CanEnter(int idx)
     {
-        if (idx <= 2) return true;
+        if (idx <= 1) return true;
         if (_serial == null) { Status("Connect to the TV first."); return false; }
-        if (idx == 4 && !_targetReady) { Status("The kiosk app is not installed on the TV yet."); return false; }
+        if (idx == 3 && !_targetReady) { Status("The kiosk app is not installed on the TV yet."); return false; }
         return true;
     }
 
@@ -334,17 +382,18 @@ public sealed class MainForm : Form
         var token = _pageCts.Token;
         switch (idx)
         {
-            case 1: _ = ScanAsync(forPairing: true, token, quietIfNone: true); break;
-            case 2:
+            case 1:
+                ApplyConnectModeFromPrepare();
                 _ = RefreshDevicesAsync();
-                if (string.IsNullOrWhiteSpace(_connAddr.Text)) _ = ScanAsync(forPairing: false, token, quietIfNone: true);
+                if (_modePair.Checked)
+                    _ = ScanAsync(forPairing: true, token, quietIfNone: true);
                 break;
-            case 3: _ = CheckTargetAsync(autoAdvance: true, token); break;
-            case 4: _ = PrepareKioskPageAsync(); break;
+            case 2: _ = CheckTargetAsync(autoAdvance: true, token); break;
+            case 3: _ = PrepareKioskPageAsync(); break;
         }
     }
 
-    private bool CanEnterQuiet(int idx) => idx <= 2 || (_serial != null && (idx == 3 || _targetReady));
+    private bool CanEnterQuiet(int idx) => idx <= 1 || (_serial != null && (idx == 2 || _targetReady));
 
     private void SetBusy(bool busy, string text = null)
     {
@@ -443,8 +492,7 @@ public sealed class MainForm : Form
                     }
                 }
                 SetBusy(false);
-                ShowPage(2);
-                if (!string.IsNullOrWhiteSpace(_connAddr.Text)) await ConnectAsync();
+                if (!string.IsNullOrWhiteSpace(_connAddr.Text)) await ConnectWirelessAsync();
                 else
                 {
                     // mDNS auto-connect may already have attached the device
@@ -462,7 +510,89 @@ public sealed class MainForm : Form
         finally { if (_busy) SetBusy(false); }
     }
 
-    private async Task ConnectAsync()
+    private async Task ConnectByIpAsync()
+    {
+        var raw = _ipAddr.Text.Trim();
+        var m = AddrRx.Match(raw);
+        if (!m.Success)
+        {
+            MessageBox.Show(this, "Type the TV’s IP address, e.g. 192.168.1.43 (port 5555 is used if you don’t specify one).", Text);
+            return;
+        }
+        var addr = m.Groups[1].Value + ":" + (m.Groups[2].Success ? m.Groups[2].Value : "5555");
+        _ipAddr.Text = addr;
+        _pageCts.Cancel();
+        var ct = _pageCts = new CancellationTokenSource();
+        SetBusy(true, "Connecting...");
+        _connResult.ForeColor = Color.FromArgb(33, 33, 33);
+        _connResult.Text = "Connecting to " + addr + "…";
+        try
+        {
+            var r = await _adb.RunAsync(20000, false, "connect", addr);
+            if (ct.IsCancellationRequested) return;
+            var all = (r.All ?? "").ToLowerInvariant();
+            bool refused = r.TimedOut
+                || all.Contains("refused")
+                || all.Contains("no route")
+                || all.Contains("timed out")
+                || all.Contains("timeout")
+                || all.Contains("failed to connect")
+                || all.Contains("cannot connect")
+                || all.Contains("connection reset");
+
+            string lastState = null, serial = null;
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (!ct.IsCancellationRequested)
+            {
+                var devs = await _adb.DevicesAllAsync();
+                if (ct.IsCancellationRequested) return;
+                var hit = devs.FirstOrDefault(d => d.Serial == addr)
+                    ?? devs.FirstOrDefault(d => d.Serial.StartsWith(m.Groups[1].Value + ":"));
+                if (hit != null)
+                {
+                    lastState = hit.State;
+                    serial = hit.Serial;
+                    if (hit.State == "device")
+                    {
+                        SetBusy(false);
+                        await UseDeviceAsync(serial);
+                        return;
+                    }
+                    if (hit.State == "unauthorized")
+                    {
+                        _connResult.ForeColor = Ui.Warn;
+                        _connResult.Text = "Look at the TV: tick Always allow from this computer and press OK.";
+                        Status("Waiting for you to allow USB debugging on the TV...");
+                    }
+                }
+                else if (refused)
+                {
+                    _connResult.ForeColor = Ui.Bad;
+                    _connResult.Text = "✖ Could not connect. USB debugging is off, or wrong IP.";
+                    Status("Not connected.");
+                    return;
+                }
+                if (DateTime.UtcNow >= deadline) break;
+                try { await Task.Delay(1000, ct.Token); } catch (TaskCanceledException) { return; }
+            }
+            if (ct.IsCancellationRequested) return;
+            if (lastState == "unauthorized")
+            {
+                _connResult.ForeColor = Ui.Warn;
+                _connResult.Text = "Look at the TV: tick Always allow from this computer and press OK. Timed out waiting — click Connect again after you allow it.";
+                Status("Still waiting for the TV to allow this computer.");
+            }
+            else
+            {
+                _connResult.ForeColor = Ui.Bad;
+                _connResult.Text = "✖ Could not connect. USB debugging is off, or wrong IP.";
+                Status("Not connected.");
+            }
+        }
+        finally { if (_busy) SetBusy(false); }
+    }
+
+    private async Task ConnectWirelessAsync()
     {
         var addr = _connAddr.Text.Trim();
         var m = AddrRx.Match(addr);
@@ -486,12 +616,12 @@ public sealed class MainForm : Form
                 if (st.Out.Trim() == "unauthorized")
                 {
                     _connResult.ForeColor = Ui.Warn;
-                    _connResult.Text = "The TV is asking for permission. Choose “Allow” on the TV, then click Connect again.";
+                    _connResult.Text = "Look at the TV: tick Always allow from this computer and press OK, then click Connect again.";
                 }
                 else
                 {
                     _connResult.ForeColor = Ui.Bad;
-                    _connResult.Text = "✖ Could not connect. Check that Wireless debugging is on, the address is right, and this PC is paired (step 2).";
+                    _connResult.Text = "✖ Could not connect. Check that Wireless debugging is on, the address is right, and this PC is paired.";
                 }
                 Status("Not connected.");
                 return;
@@ -540,7 +670,7 @@ public sealed class MainForm : Form
                 return;
             }
             SetBusy(false);
-            ShowPage(3);
+            ShowPage(2);
         }
         finally { if (_busy) SetBusy(false); }
     }
@@ -572,10 +702,10 @@ public sealed class MainForm : Form
                 Log($"{_target} is installed {ver}.");
                 Status("Ready to make the kiosk.");
                 RefreshNav();
-                if (autoAdvance && _page == 3)
+                if (autoAdvance && _page == 2)
                 {
                     await Task.Delay(1200);
-                    if (_page == 3 && !_advanced.Visible) ShowPage(4);
+                    if (_page == 2 && !_advanced.Visible) ShowPage(3);
                 }
                 return;
             }

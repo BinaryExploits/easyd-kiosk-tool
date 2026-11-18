@@ -24,6 +24,12 @@ public sealed class MdnsService
     public override string ToString() => $"{Address}   ({Type}, {Name})";
 }
 
+public sealed class AdbDevice
+{
+    public string Serial = "";
+    public string State = ""; // device, unauthorized, offline, ...
+}
+
 /// <summary>Thin async wrapper around adb.exe with logging.</summary>
 public sealed class Adb
 {
@@ -158,13 +164,18 @@ public sealed class Adb
             .GroupBy(s => s.Type + s.Address).Select(g => g.First()).ToList();
     }
 
-    /// <summary>Serials in state "device".</summary>
-    public async Task<List<string>> DevicesAsync()
+    /// <summary>All entries from `adb devices`, including unauthorized.</summary>
+    public async Task<List<AdbDevice>> DevicesAllAsync()
     {
         var r = await RunAsync(15000, true, "devices");
         return r.Out.Split('\n').Skip(1)
             .Select(l => l.Trim().Split('\t'))
-            .Where(p => p.Length == 2 && p[1].Trim() == "device")
-            .Select(p => p[0].Trim()).ToList();
+            .Where(p => p.Length >= 2 && p[0].Trim().Length > 0)
+            .Select(p => new AdbDevice { Serial = p[0].Trim(), State = p[1].Trim() })
+            .ToList();
     }
+
+    /// <summary>Serials in state "device".</summary>
+    public async Task<List<string>> DevicesAsync()
+        => (await DevicesAllAsync()).Where(d => d.State == "device").Select(d => d.Serial).ToList();
 }
