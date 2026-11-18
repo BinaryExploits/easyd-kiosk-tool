@@ -79,7 +79,7 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "EasyDisplay Kiosk Manager";
+        Text = "Kiosk Manager";
         Font = new Font("Segoe UI", 10f);
         AutoScaleMode = AutoScaleMode.Dpi;
         StartPosition = FormStartPosition.CenterScreen;
@@ -102,7 +102,7 @@ public sealed class MainForm : Form
     {
         var header = new Panel { Dock = DockStyle.Top, Height = 74, BackColor = Ui.Brand, Padding = new Padding(20, 10, 20, 10) };
         var titles = new FlowLayoutPanel { Dock = DockStyle.Left, FlowDirection = FlowDirection.TopDown, AutoSize = true, BackColor = Ui.Brand, WrapContents = false };
-        titles.Controls.Add(new Label { Text = "EasyDisplay Kiosk Manager", AutoSize = true, ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 17f), Margin = new Padding(0) });
+        titles.Controls.Add(new Label { Text = "Kiosk Manager", AutoSize = true, ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 17f), Margin = new Padding(0) });
         titles.Controls.Add(new Label { Text = "Make an Android TV / Google TV device show only EasyD Player", AutoSize = true, ForeColor = Color.FromArgb(200, 215, 240), Margin = new Padding(2, 0, 0, 0) });
         header.Controls.Add(titles);
         var devHost = new Panel { Dock = DockStyle.Right, Width = 380, BackColor = Ui.Brand };
